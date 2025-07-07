@@ -1,0 +1,636 @@
+{% extends "layout.html" %}
+
+{% macro deleted_message() %}
+    <p class="text-secondary">-- Message deleted. --</p>
+{% endmacro %}
+
+{% macro comment_box(comment, replies) %}
+<div class="d-flex mb-2" id="{{ comment.comment_id }}">
+    {% if comment.parent_id is none %}
+        <i class="bi bi-chat-square-text fs-2"></i>
+    {% else %}
+        <i class="bi bi-arrow-return-right fs-2"></i>
+    {% endif %}
+    <div class="comment border rounded p-2 ms-2 w-100" data-comment_id="{{ comment.comment_id }}">
+        <div class="header d-flex justify-content-between">
+            <div>
+                <span class="writer fw-bold">{{ comment.writer.name }}</span>
+                <span class="created-at mx-5">
+    {% if comment.created_at %}
+                    {{ comment.created_at.strftime('%Y-%m-%d %H:%M:%S') }}
+        {% if comment.edited_at %}
+                    (edited at {{ comment.edited_at.strftime('%Y-%m-%d %H:%M:%S') }})
+        {% endif %}
+    {% endif %}
+                </span>
+            </div>
+            <div>
+    {% if comment.parent_id is none %}
+                <i class="comment-reply bi bi-reply fs-5 ms-1 clickable"></i>
+    {% endif %}
+    {% if not comment.comment_id or (comment.writer_id == request.state.user.id and not comment.is_deleted) %}
+                <i class="comment-edit bi bi-pencil fs-5 ms-1 clickable"></i>
+                <i class="comment-delete bi bi-trash fs-5 ms-1 clickable"></i>
+    {% endif %}
+            </div>
+        </div>
+        <div class="content mt-2">
+            <div class="question" {% if not comment.to_admin %} style="display: none;" {% endif %}>
+                <i class="bi bi-question-octagon text-danger"> To Administrator</i>
+            </div>
+            <div class="markdown">
+    {% if comment.is_deleted %}
+                {{ deleted_message() }}
+    {% else %}
+                {{ comment.content }}
+    {% endif %}
+            </div>
+        </div>
+        <div class="replies mx-2">
+    {% for reply in replies %}
+            {{ comment_box(reply) }}
+    {% endfor %}
+        </div>
+    {% if comment.parent_id is none %}
+        <div class="reply">
+            <div class="reply-open text-end"><i class="comment-reply bi bi-reply fs-5 ms-1 clickable"></i></div>
+        </div>
+    {% endif %}
+    </div>
+</div>
+{% endmacro %}
+
+{% block style %}
+<link rel="stylesheet" href="{{ url_for('static', path='/css/easymde.min.css') }}" />
+<style>
+    img {
+        max-width: 1000px;
+    }
+
+    .current-step {
+        color: red;
+    }
+</style>
+{% endblock %}
+
+{% from "procedures/procedure_forms.html" import phase_symbols, step_symbols %}
+
+{% block content %}
+<div class="procedure d-flex">
+    <div class="row flex-grow-1 g-2">
+        {% for categories in procedure %}
+        <div class="col">
+            <div class="btn btn-success rounded-pill mb-2">{{ phase_symbols[loop.index] }}</div>
+            <div class="card">
+                <div class="card-body pt-3 pb-0">
+                    {% for category in categories %}
+                        {% if category.is_step %}
+                        <div class="card mb-3">
+                            <div class="card-header">
+                            {% if category.steps[0].step_id == step.step_id %}
+                                <b class="step-item current-step fs-5" data-step_id="{{ category.steps[0].step_id }}">
+                                    {{ category.category_order }}. {{ category.steps[0].title }}
+                                </b>
+                            {% else %}
+                                <a class="text-decoration-none" href="/designs/{{ design.design_id }}/steps/{{ category.steps[0].step_id }}" style="color: inherit;">
+                                    <b class="step-item fs-5" data-step_id="{{ category.steps[0].step_id }}">
+                                        {{ category.category_order }}. {{ category.steps[0].title }}
+                                    </b>
+                                </a>
+                            {% endif %}
+                            </div>
+                        </div>
+                        {% else %}
+                        <div class="card mb-3">
+                            <div class="card-header">
+                                <b class="fs-5">{{ category.category_order }} {{ category.title }}</b>
+                            </div>
+                            <ul class="list-group list-group-flush">
+                            {% for t in category.steps %}
+                                {% if t.step_id == step.step_id %}
+                                <li class="step-item current-step list-group-item" data-step_id="{{ t.step_id }}">
+                                    {{ step_symbols[t.step_order] }} {{ t.title }}
+                                </li>
+                                {% else %}
+                                <a class="text-decoration-none" href="/designs/{{ design.design_id }}/steps/{{ t.step_id }}">
+                                    <li class="step-item list-group-item" data-step_id="{{ t.step_id }}">
+                                        {{ step_symbols[t.step_order] }} {{ t.title }}
+                                    </li>
+                                </a>
+                                {% endif %}
+                            {% endfor %}
+                            </ul>
+                        </div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<div class="pt-4 markdown">
+    {{ step.guide }}
+</div>
+
+<div class="card rounded-3 border-primary border-3 mt-2">
+    <div class="card-body">
+        <h4 id="tasks_box" class="fw-bold">Tasks</h4>
+        <hr>
+        {% for task, design_task, design_file in tasks %}
+        <div id="task_{{ task.task_id }}" class="card mb-2">
+            <div class="card-body">
+                <div class="task-view">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5>{{ task.title }}</h5>
+                        <div class="d-flex align-items-center ms-4">
+                            <button class="show-dependency-steps btn btn-outline-dark btn-sm mx-4">
+                                Show Dependencies
+                            </button>
+                            <input type="checkbox" id="complete_{{ task.task_id }}" class="toggle-complete form-check-input" data-task_id="{{ task.task_id }}" {% if design_task.is_completed %} checked {% endif %}>
+                            <label for="complete_{{ task.task_id }}" class="form-check-label ms-1">Completed</label>
+                            <i class="open-task bi bi-chevron-down clickable ms-4"></i>
+                            <i class="close-task bi bi-chevron-up clickable ms-4" style="display: none;"></i>
+                        </div>
+                    </div>
+                    <div class="task-detail" style="display: none;" data-task_id="{{ task.task_id }}">
+                        <hr class="m-0">
+                        {% if task.description %}
+                        <fieldset class="border">
+                            <legend class="float-none w-auto px-2 fs-5">Description</legend>
+                            <div class="mx-3 mb-3" style="white-space: pre-wrap;">{{ task.description }}</div>
+                        </fieldset>
+                        {% endif %}
+                        {% if task.leaders %}
+                        <fieldset class="border">
+                            <legend class="float-none w-auto px-2 fs-5">Dependency</legend>
+                            <div class="d-flex justify-content-between">
+                                <ul class="dependency">
+                                    {% for leader in task.leaders %}
+                                    <li data-task_id="{{ leader.task_id }}" data-step_id="{{ leader.step_id }}">
+                                        <a href="/designs/{{ design.design_id }}/steps/{{ leader.step.step_id }}#task_{{ leader.task_id }}">
+                                        {% if leader.step.category.is_step %}
+                                            {{ phase_symbols[leader.step.category.phase] }}-{{ leader.step.category.category_order }}-{{ leader.task_order }}.
+                                            {{ leader.title }}
+                                        {% else %}
+                                            {{ phase_symbols[leader.step.category.phase] }}-{{ leader.step.category.category_order }}-{{ step_symbols[leader.step.step_order] }}-{{ leader.task_order }}.
+                                            {{ leader.title }}
+                                        {% endif %}
+                                        </a>
+                                        (<span class="status"></span>)
+                                    </li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        </fieldset>
+                        {% endif %}
+                        {% if task.output_code %}
+                        <fieldset class="border">
+                            <legend class="float-none w-auto px-2 fs-5">Output</legend>
+                            <div class="d-flex justify-content-between mx-3 mb-3">
+                                [{{ task.output_code }}] {{ task.output_name }}
+                                <div>
+                                {% if task.template_file %}
+                                    <a class="btn btn-outline-dark btn-sm" href="/api/tasks/{{ task.task_id }}/template_file">
+                                        <i class="bi bi-download"></i> Template
+                                    </a>
+                                {% endif %}
+                                {% if task.example_file %}
+                                    <a class="btn btn-outline-dark btn-sm" href="/api/tasks/{{ task.task_id }}/example_file" {% if not task.example_file %} disabled {% endif %}>
+                                        <i class="bi bi-download"></i> Example
+                                    </a>
+                                {% endif %}
+                                </div>
+                            </div>
+                            <div class="d-flex justify-content-between px-3 pb-2">
+                                {% if task.output_type in edit_pages %}
+                                <div class="task-info">
+                                    {% if design_task and design_task.output_edited_at %}
+                                    Updated: {{ design_task.output_edited_at.strftime('%Y-%m-%d %H:%M:%S') }}
+                                    {% else %}
+                                    Not written yet
+                                    {% endif %}
+                                </div>
+                                <div>
+                                    <a class="btn btn-primary" href="/designs/{{ design.design_id }}/tasks/{{ task.task_id }}/{{ edit_pages[task.output_type] }}">
+                                        <i class="bi-pencil-square"></i>
+                                    </a>
+                                </div>
+                                {% else %}
+                                <div class="task-info">
+                                    {% if design_file %}
+                                    Uploaded: {{ design_file.created_at.strftime('%Y-%m-%d %H:%M:%S') }}
+                                    {% else %}
+                                    Not uploaded yet
+                                    {% endif %}
+                                </div>
+                                <div>
+                                    <button class="document-upload btn btn-primary">
+                                        <i class="bi-upload"></i>
+                                    </button>
+                                    <button class="document-download btn btn-outline-dark" {% if design_file %} data-task_id="{{ task.task_id }}" {% else %} style="display: none;" {% endif %}>
+                                        <i class="bi-download"></i>
+                                    </button>
+                                    <button class="document-remove btn btn-outline-dark" {% if design_file %} data-task_id="{{ task.task_id }}" {% else %} style="display: none;" {% endif %}>
+                                        <i class="bi-trash"></i>
+                                    </button>
+                                </div>
+                                {% endif %}
+                                <input type="file" class="file d-none" data-task_id="{{ task.task_id }}">
+                            </div>
+                        </fieldset>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<template id="comment_template">
+    {{ comment_box(schemas['comment']) }}
+</template>
+
+<template id="reply_template">
+    {{ comment_box(schemas['reply']) }}
+</template>
+
+<template id="comment_form_template">
+    <div class="comment-form d-flex mb-2">
+        <i class="reply-sign bi bi-arrow-return-right fs-2"></i>
+        <div class="mx-2 w-100">
+            <textarea></textarea>
+            <div class="gap-2 d-flex justify-content-end mt-2 align-items-center">
+                <div class="to-admin">
+                    <input type="checkbox" class="form-check-input">
+                    <label class="form-check-label">To Administrator</label>
+                </div>
+                <button class="comment-save btn btn-primary">Save</button>
+                <button class="comment-cancel btn btn-secondary">Cancel</button>
+            </div>
+        </div>
+    </div>
+</template>
+
+<div id="comments" class="my-2">
+    {% for comment in comments %}
+        {% if not comment.is_deleted or comment.replies%}
+            {{ comment_box(comment, comment.replies) }}
+        {% endif %}
+    {% endfor %}
+</div>
+<textarea id="step_comment_editor"></textarea>
+<div class="gap-2 d-flex justify-content-end mt-2 align-items-center">
+    <div>
+        <input type="checkbox" class="form-check-input" id="to_admin">
+        <label class="form-check-label" for="to_admin">To Administrator</label>
+    </div>
+    <button class="comment-add btn btn-primary">Add Comment</button>
+</div>
+{% endblock %}
+
+{% block script %}
+<script src="{{ url_for('static', path='/js/marked.min.js') }}"></script>
+<script src="{{ url_for('static', path='/js/easymde.min.js') }}"></script>
+<script src="{{ url_for('static', path='/js/mathJax.js') }}"></script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+<script>
+    const DELETED_MESSAGE = `{{ deleted_message() }}`;
+
+    function createMDE(element) {
+        return new EasyMDE({
+            element: element,
+            imageUploadFunction: function(file, onSuccess, onError) {
+                formData = new FormData();
+                formData.append('file', file);
+
+                fetch('/api/images/comment', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    onSuccess(data.uri);
+                })
+                .catch(error => {
+                    onError(error.message);
+                })
+            },
+            uploadImage: true,
+            minHeight: '100px',
+            status: [],
+            previewRender: function(plainText) {
+                setTimeout(() => {
+                    convertMathJax();
+                }, 100);
+                return marked.parse(plainText);
+            }
+        });
+    }
+
+    function openNewReplyForm(target) {
+        var container = target.find('.reply');
+        if (container.find('.comment-form').length)
+        {
+            return;
+        }
+
+        var parent_id = target.data('comment_id');
+        var element = $(document.getElementById('comment_form_template').content).clone();
+        var replyMDE = createMDE(element.find('textarea')[0]);
+        var orgElement = container.find('.reply-open');
+        element.find('.to-admin').hide();
+
+        element.find('.comment-save').click(function() {
+            var content = replyMDE.value();
+            if (!content.trim()) {
+                alert('Write comment');
+                return;
+            }
+
+            call_api('/api/designs/{{ design.design_id }}/steps/{{ step.step_id }}/comments', {
+                method: 'POST',
+                data: {content: content, parent_id: parent_id},
+                callback: function(data) {
+                    var element = $(document.getElementById('reply_template').content).clone();
+                    element.children().first().attr('id', 'comment_' + data.comment_id);
+
+                    var body = element.find('.comment');
+                    body.data('comment_id', data.comment_id);
+                    body.find('.writer').text('{{ request.state.user.name }}');
+                    body.find('.created-at').text(moment(data.created_at).format('YYYY-MM-DD HH:mm:ss'));
+                    body.find('.markdown').html(marked.parse(data.content));
+
+                    body.find('.comment-edit').click(function() {
+                        openEditCommentForm($(this).closest('.comment'));
+                    });
+
+                    body.find('.comment-delete').click(function() {
+                        deleteComment($(this).closest('.comment'));
+                    });
+
+                    target.children('.replies').append(element);
+                    convertMathJax();
+
+                    orgElement.show();
+                    container.find('.comment-form').remove();
+            }});
+        });
+
+        element.find('.comment-cancel').click(function() {
+            orgElement.show();
+            $(this).closest('.comment-form').remove();
+        });
+
+        orgElement.hide();
+        container.append(element);
+    }
+
+    function openEditCommentForm(target) {
+        var container = target.children('.content');
+        if (container.find('.comment-form').length)
+        {
+            return;
+        }
+
+        var comment_id = target.data('comment_id');
+        var element = $(document.getElementById('comment_form_template').content).clone();
+        var editMDE = createMDE(element.find('textarea')[0]);
+        var contentElement = container.find('.markdown');
+
+        call_api('/api/comments/' + comment_id, {
+            method: 'GET',
+            callback: function(data) {
+                editMDE.value(data.content);
+                let to_admin = container.find('.to-admin');
+                if (data.parent_id) {
+                    to_admin.hide();
+                }
+                else {
+                    let id = 'to_admin' + comment_id;
+                    let checkbox = to_admin.find('input');
+                    checkbox.attr('id', id);
+                    to_admin.find('label').attr('for', id);
+
+                    if (data.to_admin) {
+                        checkbox.prop('checked', true);
+                    }
+                }
+        }});
+
+        element.find('.reply-sign').hide();
+
+        element.find('.comment-save').click(function() {
+            var content = editMDE.value();
+            if (!content.trim()) {
+                alert('Write comment');
+                return;
+            }
+
+            call_api('/api/comments/' + comment_id, {
+                method: 'PUT',
+                data: {content: content, to_admin: container.find('.to-admin').find('input').prop('checked')},
+                callback: function(data) {
+                    target.children('.header').find('.created-at').text(moment(data.created_at).format('YYYY-MM-DD HH:mm:ss') + ' (edited at ' + moment(data.edited_at).format('YYYY-MM-DD hh:mm:ss') +')');
+                    contentElement.html(marked.parse(data.content));
+                    convertMathJax();
+
+                    if (data.to_admin) {
+                        container.find('.question').show();
+                    }
+                    else {
+                        container.find('.question').hide();
+                    }
+
+                    contentElement.show();
+                    container.find('.comment-form').remove();
+            }});
+        });
+
+        element.find('.comment-cancel').click(function() {
+            contentElement.show();
+            $(this).closest('.comment-form').remove();
+        });
+
+        contentElement.hide();
+        container.append(element);
+    }
+
+    function deleteComment(target) {
+        var comment_id = target.data('comment_id');
+
+        if (!confirm('Are you sure you want to delete comment?')) {
+            return;
+        }
+
+        call_api('/api/comments/' + comment_id, {
+            method: 'DELETE',
+            callback: function(data) {
+                target.children('.content').html(DELETED_MESSAGE);
+                const header = target.children('.header');
+                header.find('.comment-edit').hide();
+                header.find('.comment-delete').hide();
+        }});
+    }
+
+    (() => {
+        $(".markdown").each(function(index) {
+            $(this).html(marked.parse($(this).text().trim()));
+        });
+
+        $('.toggle-complete').change(function() {
+            element = $(this)[0];
+
+            call_api('/api/designs/{{ design.design_id }}/tasks/' + $(this).data('task_id'), {
+                method: 'PUT',
+                data: {'is_completed': element.checked},
+                callback: function(is_completed) {
+                    element.checked = is_completed;
+                }
+            });
+        });
+
+        $('.show-dependency-steps').click(function() {
+            steps = [];
+            $(this).closest('.task-view').find('.dependency').find('li').each(function() {
+                steps.push($(this).data('step_id'));
+            });
+
+            $('.procedure * .step-item').each(function() {
+                if (steps.includes($(this).data('step_id'))) {
+                    $(this).addClass('text-primary');
+                }
+                else {
+                    $(this).removeClass('text-primary');
+                }
+            });
+        });
+
+        $('.open-task').click(function() {
+            detail = $(this).closest('.task-view').find('.task-detail');
+            dependencies = detail.find('.dependency');
+            task_id = detail.data('task_id');
+            open_button = $(this);
+            close_button = $(this).siblings('.close-task');
+
+            call_api(`/api/designs/{{ design.design_id }}/tasks/${task_id}/dependency_statuses`, {
+                method: 'GET',
+                callback: function(statuses) {
+                    dependencies.children('li').each(function() {
+                        $(this).children('.status').text(
+                            statuses[$(this).data('task_id')] ? 'Completed' : 'Not Completed');
+                    })
+                    open_button.hide();
+                    detail.show();
+                    close_button.show();
+                }
+            });
+        });
+
+        $('.close-task').click(function() {
+            $(this).closest('.task-view').find('.task-detail').hide();
+            $(this).siblings('.open-task').show();
+            $(this).hide();
+        });
+
+        $('.document-upload').click(function() {
+            $(this).closest('fieldset').find('.file').click();
+        });
+
+        $('.document-download').click(function() {
+            window.location.href = `/api/designs/{{ design.design_id }}/tasks/${$(this).data('task_id')}/file`;
+        });
+
+        $('.document-remove').click(function() {
+            fieldset = $(this).closest('fieldset');
+
+            call_api(`/api/designs/{{ design.design_id }}/tasks/${$(this).data('task_id')}/files`, {
+                method: 'DELETE',
+                callback: function(data) {
+                    fieldset.find('.task-info').text('Not uploaded yet');
+                    fieldset.find('.document-download').hide();
+                    fieldset.find('.document-remove').hide();
+                }
+            });
+        });
+
+        $('.file').change(function() {
+            data = new FormData();
+            data.append('file', this.files[0]);
+
+            fieldset = $(this).closest('fieldset');
+
+            submit_multipart_data(
+                data, 'POST', `/api/designs/{{ design.design_id }}/tasks/${$(this).data('task_id')}/files`, function(data) {
+                    fieldset.find('.task-info').text('Uploaded: ' + moment(data.created_at).format('YYYY-MM-DD HH:mm:ss'));
+
+                    download_button = fieldset.find('.document-download');
+                    download_button.data('task_id', data.task_id);
+                    remove_button = fieldset.find('.document-remove');
+                    remove_button.data('task_id', data.task_id);
+
+                    download_button.show();
+                    remove_button.show();
+            });
+        });
+
+        var commentMDE = createMDE(document.getElementById('step_comment_editor'));
+
+        $('.comment-add').click(function() {
+            var content = commentMDE.value();
+            if (!content.trim()) {
+                alert('Write comment');
+                return;
+            }
+
+            call_api('/api/designs/{{ design.design_id }}/steps/{{ step.step_id }}/comments', {
+                method: 'POST',
+                data: {content: content, to_admin: $('#to_admin').prop('checked')},
+                callback: function(data) {
+                    var element = $(document.getElementById('comment_template').content).clone();
+                    element.children().first().attr('id', 'comment_' + data.comment_id);
+
+                    var body = element.find('.comment');
+                    body.data('comment_id', data.comment_id);
+                    body.find('.writer').text('{{ request.state.user.name }}');
+                    body.find('.created-at').text(moment(data.created_at).format('YYYY-MM-DD HH:mm:ss'));
+                    body.find('.markdown').html(marked.parse(data.content));
+                    if (data.to_admin) {
+                        body.find('.question').show();
+                    }
+
+                    body.find('.comment-reply').click(function() {
+                        openNewReplyForm($(this).closest('.comment'));
+                    });
+
+                    body.find('.comment-edit').click(function() {
+                        openEditCommentForm($(this).closest('.comment'));
+                    });
+
+                    body.find('.comment-delete').click(function() {
+                        deleteComment($(this).closest('.comment'));
+                    });
+
+                    $('#comments').append(element);
+                    commentMDE.value('');
+                    $('#to_admin').prop('checked', false);
+                    convertMathJax();
+            }});
+        });
+
+        $('.comment-reply').click(function() {
+            openNewReplyForm($(this).closest('.comment'));
+        });
+
+        $('.comment-edit').click(function() {
+            openEditCommentForm($(this).closest('.comment'));
+        });
+
+        $('.comment-delete').click(function() {
+            deleteComment($(this).closest('.comment'));
+        });
+    })()
+</script>
+{% endblock %}

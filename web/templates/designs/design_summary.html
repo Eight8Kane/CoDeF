@@ -1,0 +1,173 @@
+{% extends "layout.html" %}
+
+{% from "procedures/procedure_forms.html" import phase_symbols, step_symbols %}
+
+{% macro task_columns(task) %}
+    <td>
+        {{ task.task_order }}. {{ task.title }}
+    </td>
+    <td>
+    {% if tasks[task.task_id].is_completed %}
+        Completed
+    {% else %}
+        Not Completed
+    {% endif %}
+    </td>
+    <td class="text-center align-middle">
+    {% if task.output_type == OutputType.File %}
+        {% if task.template_file %}
+        <a class="btn btn-outline-dark btn-sm" href="/api/tasks/{{ task.task_id }}/template_file">
+            <i class="bi bi-download"></i>
+        </a>
+        {% endif %}
+    {% elif task.output_type == OutputType.MD %}
+        {% if task.template_markdown %}
+        <a class="btn btn-outline-dark btn-sm" href="/tasks/{{ task.task_id }}/markdown_template" target="_blank">
+            <i class="bi bi-box-arrow-up-right"></i>
+        </a>
+        {% endif %}
+    {% endif %}
+    </td>
+    <td class="text-center align-middle">
+    {% if task.output_type == OutputType.File %}
+        {% if task.example_file %}
+        <a class="btn btn-outline-dark btn-sm" href="/api/tasks/{{ task.task_id }}/example_file">
+            <i class="bi bi-download"></i>
+        </a>
+        {% endif %}
+    {% elif task.output_type == OutputType.MD %}
+        {% if task.example_markdown %}
+        <a class="btn btn-outline-dark btn-sm" href="/tasks/{{ task.task_id }}/markdown_example" target="_blank">
+            <i class="bi bi-box-arrow-up-right"></i>
+        </a>
+        {% endif %}
+    {% endif %}
+    </td>
+    <td class="text-center align-middle">
+    {% if task.output_type == OutputType.File %}
+        {% if tasks[task.task_id].latest_file %}
+        <a class="btn btn-outline-dark btn-sm" href="/api/designs/{{ design.design_id }}/tasks/{{ task.task_id }}/file">
+            <i class="bi bi-download"></i>
+        </a>
+        {% endif %}
+    {% else %}
+        {% if tasks[task.task_id].output_edited_at %}
+        <div>
+            <a class="btn btn-outline-dark btn-sm" href="/designs/{{ design.design_id }}/tasks/{{ task.task_id }}/{{ edit_pages[task.output_type] }}">
+                <i class="bi-pencil"></i>
+            </a>
+        </div>
+        {% endif %}
+    {% endif %}
+    </td>
+{% endmacro %}
+
+{% block style %}
+    <style>
+        @media (min-width: 1600px) {
+            .container {
+                max-width: 1520px;
+            }
+        }
+        @media (min-width: 2000px) {
+            .container {
+                max-width: 1920px;
+            }
+        }
+
+        tr {
+            height: 36px;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+<div class="alert alert-light mb-4" role="alert">
+    {{ design.description }}
+</div>
+
+<table class="table table-sm mt-2">
+    <thead>
+        <th colspan="3">Step</th>
+        {% if not closed %}
+        <th>View</th>
+        {% endif %}
+        <th>Task</th>
+        <th style="width: 80px;">Status</th>
+        <th>Template</th>
+        <th>Example</th>
+        <th>Document</th>
+    </thead>
+    <tbody>
+    {% set ns = namespace(disabled_attr='') %}
+    {% for categories in procedure %}
+        {% if categories %}
+                                <tr>
+                                    <td rowspan="{{ task_counts['phase'][loop.index] }}">{{ phase_symbols[loop.index] }}.</td>
+            {% for category in categories %}
+                {% if loop.index > 1 %}
+                                <tr>
+                {% endif %}
+                {% if category.is_step %}
+                                    <td colspan="2" rowspan="{{ task_counts['category'][category.category_id] }}">
+                                        {{ category.category_order }}. {{ category.steps[0].title }}
+                                    </td>
+                    {% if not closed %}
+                                    <td rowspan="{{ task_counts['category'][category.category_id] }}">
+                                        <a href="/designs/{{ design.design_id }}/steps/{{ category.steps[0].step_id }}" class="btn btn-outline-dark btn-sm">
+                                            View
+                                        </a>
+                                    </td>
+                    {% endif %}
+                    {% if category.steps[0].tasks %}
+                        {% for task in category.steps[0].tasks %}
+                                    {{ task_columns(task) }}
+                                </tr>
+                        {% endfor %}
+                    {% else %}
+                                    <td colspan="5"></td>
+                    {% endif %}
+                                </tr>
+                {% else %}
+                                    <td rowspan="{{ task_counts['category'][category.category_id] }}">
+                                        {{ category.category_order }}. {{ category.title }}
+                                    </td>
+                    {% if category.steps %}
+                        {% for step in category.steps %}
+                            {% if loop.index > 1 %}
+                                <tr>
+                            {% endif %}
+                                    <td rowspan="{{ task_counts['step'][step.step_id] }}">
+                                        {{ step_symbols[step.step_order] }}. {{ step.title }}
+                                    </td>
+                            {% if not closed %}
+                                    <td rowspan="{{ task_counts['step'][step.step_id] }}">
+                                        <a href="/designs/{{ design.design_id }}/steps/{{ step.step_id }}" class="btn btn-outline-dark btn-sm">
+                                            View
+                                        </a>
+                                    </td>
+                            {% endif %}
+                            {% if step.tasks %}
+                                {% for task in step.tasks %}
+                                    {{ task_columns(task) }}
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                    <td colspan="5"></td>
+                                </tr>
+                            {% endif %}
+                            {% if step.step_code == step_code %}
+                                {% set ns.disabled_attr = 'disabled' %}
+                            {% endif %}
+                        {% endfor %}
+                    {% else %}
+                                    <td colspan="7"></td>
+                                </tr>
+                    {% endif %}
+                {% endif %}
+            {% endfor %}
+        {% endif %}
+    {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

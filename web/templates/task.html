@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tailwind Elements Quick Start</title>
+
+    <!-- Roboto font -->
+    <link href="{{ url_for('static', path='/css/roboto-font.css') }}?family=Roboto:300,400,500,700,900&display=swap" />
+
+    <!-- Tailwind Elements styles -->
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/tw-elements.min.css') }}" />
+
+    <!-- Tailwind CSS config -->
+    <script src="{{ url_for('static', path='/js/tailwindcss-3.0.9.js') }}"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                fontFamily: {
+                    sans: ["Roboto", "sans-serif"],
+                    body: ["Roboto", "sans-serif"],
+                    mono: ["ui-monospace", "monospace"],
+                },
+                container: {
+                    center: true,
+                }
+            },
+            corePlugins: {
+                preflight: false,
+            },
+        };
+
+        window.onload = function() {
+            $manual = document.querySelector('#manual');
+            $markdown = document.querySelector('#markdown');
+
+            $manual.contentDocument.body.innerHTML = marked.parse($markdown.value);
+            $manual.style.height = ($manual.contentDocument.body.scrollHeight + 50) + 'px';
+        }
+    </script>
+</head>
+
+<body>
+
+<textarea class="h-0" id="markdown">{{ markdown }}</textarea>
+<div class="container mx-auto">
+    <div class="flex flex-row p-4 text-sm">
+        <div class="grow bg-teal-500/75 p-4 rounded-lg">
+            <div>
+                <button type="button" class="bg-info w-full p-1 mb-2"> A-1 고객 요구 사항 간 상대적 중요도 도출</button>
+                <button type="button" class="bg-warning w-full p-1 mb-2"> i. 고객 요구 사항 간 상대적 중요도 도출 </button>
+                <button type="button" class="bg-warning w-full p-1 mb-2"> ii. 고객 요구 사항 간 상대적 중요도 도출</button>
+                <button type="button" class="bg-warning w-full p-1 mb-2"> iii. 고객 요구 사항 간 상대적 중요도 도출</button>
+            </div>
+            <div class="p-5"><center><img src="{{ url_for('static', path='/images/ionicons/arrow-down.svg') }}" width="20"></center></div>
+            <div>
+                <button type="button" class="bg-info w-full p-1 mb-2"> A-2 고객 요구 사항 간 상대적 중요도 도출</button>
+                <button type="button" class="bg-warning w-full p-1 mb-2"> i. 고객 요구 사항 간 상대적 중요도 도출</button>
+                <button type="button" class="bg-warning w-full p-1 mb-2"> ii. 고객 요구 사항 간 상대적 중요도 도출</button>
+                <button type="button" class="bg-warning w-full p-1 mb-2"> iii. 고객 요구 사항 간 상대적 중요도 도출</button>
+                <button type="button" class="bg-warning w-full p-1 mb-2"> iv. 고객 요구 사항 간 상대적 중요도 도출</button>
+            </div>
+        </div>
+        <div class="grow-0 px-1 align-middle self-center w-20"><img src="{{ url_for('static', path='/images/ionicons/arrow-forward.svg') }}" width="100px"></div>
+        <div class="grow bg-teal-500/75 p-4 rounded-lg">
+            <div>
+                <button type="button" class="bg-info w-full p-1 mb-2"> B-1 고객 요구 사항 간 상대적 중요도 도출</button>
+                <button type="button" class="bg-warning w-full p-1 mb-2"> i. 고객 요구 사항 간 상대적 중요도 도출</button>
+                <button type="button" class="bg-warning w-full p-1 mb-2"> ii. 고객 요구 사항 간 상대적 중요도 도출</button>
+            </div>
+            <div class="p-5"><center><img src="{{ url_for('static', path='/images/ionicons/arrow-down.svg') }}" width="20"></center></div>
+            <div>
+                <button type="button" class="bg-info w-full p-1 mb-2"> B-2 고객 요구 사항 간 상대적 중요도 도출</button>
+                <button type="button" class="bg-warning w-full p-1 mb-2"> i. 고객 요구 사항 간 상대적 중요도 도출</button>
+                <button type="button" class="bg-warning w-full p-1 mb-2"> ii. 고객 요구 사항 간 상대적 중요도 도출</button>
+                <button type="button" class="bg-warning w-full p-1 mb-2"> iii. 고객 요구 사항 간 상대적 중요도 도출</button>
+                <button type="button" class="bg-warning w-full p-1 mb-2"> iv. 고객 요구 사항 간 상대적 중요도 도출</button>
+            </div>
+            <div>
+                <button type="button" class="bg-primary w-full p-1 mb-2"> SRR</button>
+            </div>
+        </div>
+        <div class="grow-0 px-1 align-middle self-center w-20"><img src="{{ url_for('static', path='/images/ionicons/arrow-forward.svg') }}" width="30"></div>
+        <div class="grow bg-teal-500/75 p-4 rounded-lg">
+            <div>
+                <button type="button" class="bg-info w-full p-1 mb-2"> C-1 고객 요구 사항 간 상대적 중요도 도출</button>
+                <button type="button" class="bg-warning w-full p-1 mb-2"> i. 고객 요구 사항 간 상대적 중요도 도출</button>
+                <button type="button" class="bg-warning w-full p-1 mb-2"> ii. 고객 요구 사항 간 상대적 중요도 도출</button>
+            </div>
+            <div class="p-5"><center><img src="{{ url_for('static', path='/images/ionicons/arrow-down.svg') }}" width="20"></center></div>
+            <div>
+                <button type="button" class="bg-info w-full p-1 mb-2"> C-2 고객 요구 사항 간 상대적 중요도 도출</button>
+                <button type="button" class="bg-warning w-full p-1 mb-2"> i. 고객 요구 사항 간 상대적 중요도 도출</button>
+                <button type="button" class="bg-warning w-full p-1 mb-2"> ii. 고객 요구 사항 간 상대적 중요도 도출</button>
+                <button type="button" class="bg-warning w-full p-1 mb-2"> iii. 고객 요구 사항 간 상대적 중요도 도출</button>
+            </div>
+            <div>
+                <button type="button" class="bg-primary w-full p-1 mb-2"> SDR</button>
+            </div>
+        </div>
+    </div>
+
+    <iframe id="manual" class="m-4" style="width: 750px" scrolling="no" src="{{ url_for('static', path='/preview.html') }}">
+    </iframe>
+</div>
+
+<!-- Tailwind Elements JavaScript -->
+<script src="{{ url_for('static', path='/js/tw-elements.umd.min.js') }}"></script>
+
+<script src="{{ url_for('static', path='/js/marked.min.js') }}"></script>
+</body>
+</html>

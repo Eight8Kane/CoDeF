@@ -1,0 +1,85 @@
+{% extends "layout.html" %}
+
+{% block style %}
+<link rel="stylesheet" href="{{ url_for('static', path='/css/datatables-2.2.2.min.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/datatables.css') }}">
+{% endblock %}
+
+{% block content %}
+<form id="member_form">
+    <div class="row g-3">
+        <div class="col-10">
+            <div class="input-group">
+                <label class="input-group-text">Email</label>
+                <input type="email" class="form-control" name="email" required>
+            </div>
+        </div>
+        <div class="col-2">
+            <button class="w-100 btn btn-primary" type="submit">Add Member</button>
+        </div>
+    </div>
+</form>
+
+<table class="table table-sm table-hover mt-4" id="user_table">
+    <thead>
+    <tr>
+        <th scope="col">Email</th>
+        <th scope="col">Name</th>
+    </thead>
+    <tbody>
+    {% for member in members %}
+        <tr>
+            <td class="member-email">{{ member.user.email }}</td>
+            <td>{{ member.user.name }}</td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endblock %}
+
+{% block script %}
+<script src="{{ url_for('static', path='/js/marked.min.js') }}"></script>
+<script src="{{ url_for('static', path='/js/Sortable.js') }}"></script>
+<script src="{{ url_for('static', path='/js/easymde.min.js') }}"></script>
+<script>
+    (() => {
+        $('#member_form').submit(function(event) {
+            event.preventDefault();
+
+            const email = $(this)[0].email.value.trim();
+            const existing = $(".member-email").filter(function () {
+                return $(this).text().trim() === email;
+            });
+
+            if (existing.length) {
+                alert(`${email} is already a member.`);
+                return;
+            }
+
+            call_api('/api/user_name?email=' + email, {
+                method: 'GET',
+                callback: function(name) {
+                    if (confirm(`Would you like to add "${name}" as a member?`)) {
+                        call_api('/api/designs/{{ design.design_id }}/members', {
+                            data: {email: email},
+                            method: 'POST',
+                            callback: function(name) {
+                                window.location.reload();
+                            },
+                            on_error: function(status, data) {
+                                alert('Process failed');
+                            }});
+                    }
+                },
+                on_error: function(status, data) {
+                    if (status == 404) {
+                        alert('User not found');
+                    }
+                    else {
+                        alert('Process failed');
+                    }
+                }});
+        });
+    })();
+</script>
+{% endblock %}

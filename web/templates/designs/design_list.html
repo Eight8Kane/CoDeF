@@ -1,0 +1,95 @@
+{% extends "layout.html" %}
+
+{% block style %}
+<link rel="stylesheet" href="{{ url_for('static', path='/css/datatables-2.2.2.min.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/datatables.css') }}">
+{% endblock %}
+
+{% block content %}
+    {% if procedure_id %}
+        <div class="w-100 text-end">
+            <a class="btn btn-primary btn-lg px-5 py-3" type="button" href="/designs/new">
+                <i class="bi bi-plus-circle pe-2"></i>
+                New Design
+            </a>
+        </div>
+    {% endif %}
+
+<table id="design_table" class="table table-sm table-hover">
+    <thead>
+        <tr>
+            <th scope="col">Design Name</th>
+            <th scope="col">Project</th>
+            <th scope="col">System</th>
+            <th scope="col" class="align-left">Created</th>
+    {% if request.state.user.level == UserLevel.Admin %}
+            <th scope="col" class="align-left">Procedure</th>
+    {% endif %}
+            <th class="nosort align-right"></th>
+        </tr>
+    </thead>
+    <tbody>
+    </tbody>
+</table>
+{% endblock %}
+
+{% block script %}
+<script src="{{ url_for('static', path='/js/datatables-2.2.2.min.js') }}"></script>
+
+<script>
+    function deleteDesign(id, name) {
+        if (confirm(`Are you sure you want to delete the design "${name}"?`)) {
+            call_api('/api/designs/' + id, {
+                method: 'DELETE',
+                callback: function() {
+                    designTable.ajax.reload(null, false);
+                }
+            });
+        }
+    }
+
+    const designTable = new DataTable('#design_table', {
+        ajax: {
+            url: '/api/designs',
+        },
+        processing: true,
+        serverSide: true,
+        search: {return: true},
+        columns: [
+            {name: 'name', data: 'name'},
+            {name: 'project', data: 'project'},
+            {name: 'system', data: 'system'},
+            {
+                name: 'created_at',
+                render: function(data, type, row) {
+                    return moment(row.created_at).format('YYYY-MM-DD HH:mm:ss');
+                }
+            },
+    {% if request.state.user.level == UserLevel.Admin %}
+            {
+                name: 'procedure',
+                render: function(data, type, row) {
+                    return row.procedure.name;
+                }
+            },
+    {% endif %}
+            {
+                render: function(data, type, row) {
+                    return `
+                        <a href="/designs/${row.design_id}/summary" class="btn btn-outline-dark btn-sm">View</a>
+    {% if request.state.user.level == UserLevel.Admin %}
+                        <button class="btn btn-outline-dark btn-sm" onclick="deleteDesign(${row.design_id}, '${row.name}');">Delete</button>
+    {% endif %}
+                    `;
+                }
+            }
+        ],
+        columnDefs: [
+            {targets: 'nosort', orderable: false},
+            {targets: 'align-left', className: 'text-start'},
+            {targets: 'align-right', className: 'text-end'}
+        ],
+        order: [[3, 'desc']]
+    });
+</script>
+{% endblock %}

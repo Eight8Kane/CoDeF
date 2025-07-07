@@ -1,0 +1,197 @@
+{% extends "layout.html" %}
+
+{% block style %}
+<link rel="stylesheet" href="{{ url_for('static', path='/css/jspreadsheet-4/jspreadsheet.min.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/jspreadsheet-4/jsuites.min.css') }}">
+<style>
+    .spreadsheet thead td {
+        writing-mode: vertical-rl !important;
+    }
+
+    .spreadsheet .readonly {
+        color: black !important;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div>
+    <div class="h4">계층화 분석 자료</div>
+    <div id="ahp_table" class="spreadsheet"></div>
+
+    <div class="text-center mb-4">
+        {% if not closed %}
+        <button class="normalize btn btn-info" type="button">Normalize</button>
+        <button class="save btn btn-primary" type="button">Save</button>
+        <a class="btn btn-secondary" href="/designs/{{ design.design_id }}/steps/{{ task.step_id }}">Cancel</a>
+        {% endif %}
+    </div>
+
+    <div class="h4">Normalized AHP</div>
+    <div id="normalized_ahp_table" class="spreadsheet"></div>
+</div>
+{% endblock %}
+
+{% block script %}
+<script src="{{ url_for('static', path='/js/jspreadsheet-4/jspreadsheet.min.js') }}"></script>
+<script src="{{ url_for('static', path='/js/jspreadsheet-4/jsuites.min.js') }}"></script>
+
+<script>
+    function getCellName(row, column) {
+        let name = "";
+        while (column >= 0) {
+            name = String.fromCharCode((column % 26) + 65) + name;
+            column = Math.floor(column / 26) - 1;
+        }
+
+        return `${name}${row + 1}`;
+    }
+
+    (() => {
+        const atvCount = {{ ahp_data | length }};
+        const normalizedData = [];
+
+        const weightColumn = atvCount + 1;
+        const rankColumn = atvCount + 2;
+
+        var data = [];
+        var atvIDs = [];
+        var totals = Array(atvCount + 1).fill(0);
+        var weights = Array(atvCount).fill(0);
+
+        function normalize() {
+            var data = sheet.getData();
+
+            for (let j = 1; j <= atvCount; j++) {
+                totals[j] = 0;
+                for (let i = 0; i < j; i++) {
+                    data[i][j] = 1 / parseFloat(data[j - 1][i + 1]);
+                    totals[j] += parseFloat(data[i][j]);
+                }
+                for (let i = j; i < atvCount; i++) {
+                    totals[j] += parseFloat(data[i][j]);
+                }
+            }
+
+            for (let i = 0; i < atvCount; i++) {
+                weights[i] = 0;
+
+                for (let j = 1; j <= atvCount; j++) {
+                    value = data[i][j] / totals[j];
+                    normalizedData[i][j] = value;
+                    weights[i] += value;
+                }
+
+                normalizedData[i][weightColumn] = weights[i];
+            }
+
+            for (let i = 0; i < atvCount; i++) {
+                normalizedData[i][rankColumn] = 1;
+                for (let j = 0; j < atvCount; j++) {
+                    if (weights[i] < weights[j]) {
+                        normalizedData[i][rankColumn] += 1;
+                    }
+                }
+                normalizedData[i][weightColumn] = weights[i];
+            }
+
+            normalizedSheet.setData(normalizedData);
+        }
+
+{% for ahp in ahp_data %}
+        atvIDs.push({{ ahp.atv_id }});
+
+        row = Array(atvCount + 1).fill('');
+        row[0] = '{{ ahp.requirement }}';
+    {% for v in ahp.ahp_values %}
+        row[{{ v.consequent.atv_order }}] = '{{ v.value }}';
+    {% endfor %}
+        data.push(row);
+
+        row = Array(atvCount + 3).fill('');
+        row[0] = '{{ ahp.requirement }}';
+        normalizedData.push(row);
+{% endfor %}
+
+        let calculationCells = []
+        for (let i = 0; i < atvCount; i++) {
+            data[i][i + 1] = '1.00';
+            calculationCells.push(getCellName(i, i + 1));
+
+            for (let j = i + 1; j < atvCount; j++) {
+                data[i][j + 1] = `=ROUND(1/${getCellName(j, i + 1)}, 2)`;
+                calculationCells.push(getCellName(i, j + 1));
+            }
+        }
+
+        let sheet = jspreadsheet(document.getElementById('ahp_table'), {
+            data: data,
+            columns: [
+                {title: ' ', width: 450, readOnly: true},
+{% for ahp in ahp_data %}
+                {title: '{{ ahp.requirement }}', width: 50, type: 'numeric', mask: '0.00'},
+{% endfor %}
+            ],
+            allowInsertColumn: false,
+            allowInsertRow: false,
+            allowDeleteRow: false,
+            editable: {% if closed %} false {% else %} true {% endif %},
+        });
+
+        let normalizedSheet = jspreadsheet(document.getElementById('normalized_ahp_table'), {
+            columns: [
+                {title: ' ', width: 450, readOnly: true},
+{% for ahp in ahp_data %}
+                {title: '{{ ahp.requirement }}', width: 50, readOnly: true, type: 'numeric', mask: '0.000'},
+{% endfor %}
+                {title: 'Weight', type: 'numeric', width: 50, readOnly: true, type: 'numeric', mask: '0.000'},
+                {title: 'Rank', type: 'numeric', width: 50, readOnly: true},
+            ],
+            allowInsertColumn: false,
+            allowInsertRow: false,
+            allowDeleteRow: false,
+        });
+
+        for (cell of calculationCells) {
+            sheet.setReadOnly(cell, true);
+        }
+
+        normalize();
+
+        weights = []
+        for (let i = 0; i < atvCount; i++) {
+            weights.push(sheet.getValueFromCoords(weightColumn, i));
+        }
+
+        $('.normalize').click(function() {
+            normalize();
+        });
+
+        $('.save').click(function() {
+            var sheetData = sheet.getData();
+
+            data = []
+            for (let i = 0; i < atvCount; i++) {
+                row = [atvIDs[i]]
+                for (let j = 1; j <= i; j++) {
+                    if (!$.isNumeric(sheetData[i][j])) {
+                        alert('숫자만 입력 가능합니다.');
+                        return;
+                    }
+
+                    row.push(sheetData[i][j].trim());
+                }
+                data.push(row);
+            }
+
+            call_api('/api/designs/{{ design.design_id }}/tasks/{{ task.task_id }}/ahp', {
+                method: 'PUT',
+                data: data,
+                callback: function() {
+                    window.location.href = '/designs/{{ design.design_id }}/steps/{{ task.step_id }}';
+                }
+            });
+        });
+    })()
+</script>
+{% endblock %}

@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en" style="height: 100%">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>CoDeF</title>
+
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/bootstrap-5.3.2/bootstrap.min.css') }}">
+    <script src="{{ url_for('static', path='/js/bootstrap-5.3.2/bootstrap.bundle.min.js') }}"></script>
+    <script src="{{ url_for('static', path='/js/jquery-3.7.1.min.js') }}"></script>
+    <script src="{{ url_for('static', path='/js/marked.min.js') }}"></script>
+    <script src="{{ url_for('static', path='/js/mathJax.js') }}"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+    <style>
+        html {
+            font-size: 14px;
+        }
+
+        pre {
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+    </style>
+</head>
+<body class="bg-light">
+    <div class="container py-5">
+        <header class="mb-4">
+            <h1 class="display-6">[Template] {{ get_task_file_name(task, '') }}</h1>
+        </header>
+
+        <ul class="nav nav-tabs" id="previewTab" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="preview-tab" data-bs-toggle="tab" data-bs-target="#preview" type="button" role="tab">
+                    Preview
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="source-tab" data-bs-toggle="tab" data-bs-target="#source" type="button" role="tab">
+                    Source
+                </button>
+            </li>
+        </ul>
+        <div class="tab-content bg-white p-4 rounded shadow-sm" id="previewTabContent">
+            <div class="markdown tab-pane fade show active" id="preview" role="tabpanel">{{ task.template_markdown }}</div>
+            <pre class="tab-pane fade" id="source" role="tabpanel">{{ task.template_markdown }}</pre>
+        </div>
+    </div>
+
+    <script>
+        (() => {
+            $('.markdown').html(marked.parse($('.markdown').text().trim()));
+        })();
+    </script>
+</body>
+</html>

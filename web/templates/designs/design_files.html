@@ -1,0 +1,32 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="p-3 pb-4 text-center"><h1 class="display-4 fw-normal">{{ design.name }}</h1></div>
+
+<div class="mb-3">{{ design.description }}</div>
+
+<table class="table table-sm table-hover">
+    <thead>
+        <tr>
+            <th>File</th>
+            <th>Writer</th>
+            <th>Date</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for design_file, writer in files %}
+        <tr>
+            <td>{{ file_name }}_{{ design_file.version }}.{{ design_file.file_name | get_suffix }}</td>
+            <td>{{ writer }}</td>
+            <td>{{ design_file.created_date.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+            <td>
+                <a href="/api/design_file/{{ design_file.design_file_id }}" class="btn btn-outline-dark btn-sm">
+                    Download
+                </a>
+            </td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

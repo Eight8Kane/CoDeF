@@ -1,0 +1,244 @@
+{% extends "layout.html" %}
+
+{% block style %}
+<link rel="stylesheet" href="{{ url_for('static', path='/css/jspreadsheet-4/jspreadsheet.min.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/jspreadsheet-4/jsuites.min.css') }}">
+<style>
+    .spreadsheet thead td {
+        writing-mode: vertical-rl !important;
+    }
+
+    .spreadsheet .readonly {
+        color: black !important;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div>
+    <div class="h4">Relationship Points</div>
+    <div id="relationship_table" class="spreadsheet"></div>
+
+    <div class="text-center mb-4">
+        {% if not closed %}
+        <button class="update-importance btn btn-info" type="button">Update Importance</button>
+        <button class="save btn btn-primary" type="button">Save</button>
+        <a class="btn btn-secondary" href="/designs/{{ design.design_id }}/steps/{{ task.step_id }}">Cancel</a>
+        {% endif %}
+    </div>
+
+    <div class="h4">Importance</div>
+    <div id="importance_table" class="spreadsheet"></div>
+</div>
+{% endblock %}
+
+{% block script %}
+<script src="{{ url_for('static', path='/js/jspreadsheet-4/jspreadsheet.min.js') }}"></script>
+<script src="{{ url_for('static', path='/js/jspreadsheet-4/jsuites.min.js') }}"></script>
+
+<script>
+    (() => {
+        const directionSymbols = {'-1': '▲', '0': '•', '1': '▼'};
+
+        const atvCount = {{ ahp_data | length }};
+        const echcCount = {{ echc_data | length }};
+        const importanceData = [];
+
+        const dataStartRow = 1;
+        const dataStartColumn = 3;
+        const dataOverRow = dataStartRow + atvCount;
+        const dataOverColumn = dataStartColumn + echcCount;
+        const marketValuesRow = dataOverRow
+        const targetValuesRow = marketValuesRow + 1
+
+        const importanceStartColumn = 2;
+        const importanceOverColumn = importanceStartColumn + echcCount;
+        const importanceRowDiff = 1;
+        const importanceColumnDiff = importanceStartColumn - dataStartColumn;
+        const totalRow = dataOverRow + importanceRowDiff;
+        const rankRow = totalRow + 1;
+        const weightedRow = rankRow + 1;
+
+        var data = [];
+        var atvIDs = [];
+        var echcIDs = []
+
+        var weights = Array(atvCount).fill(0);
+
+        function updateImportance() {
+            var data = sheet.getData();
+
+            var total = 0
+            for (let j = dataStartColumn; j < dataOverColumn; j++) {
+                var column = j + importanceColumnDiff;
+                var subtotal = 0;
+
+                importanceData[0][column] = data[marketValuesRow][j]
+                importanceData[1][column] = data[targetValuesRow][j]
+
+                for (let i = dataStartRow; i < dataOverRow; i++) {
+                    value = data[i][j] * data[i][dataStartColumn - 1];
+                    importanceData[i + importanceRowDiff][column] = value.toFixed(2);
+                    subtotal += value;
+                }
+
+                importanceData[totalRow][column] = subtotal.toFixed(3);
+                total += subtotal;
+            }
+
+            for (let i = importanceStartColumn; i < importanceOverColumn; i++) {
+                importanceData[rankRow][i] = 1;
+                for (let j = importanceStartColumn; j < importanceOverColumn; j++) {
+                    if (Number(importanceData[totalRow][i]) < Number(importanceData[totalRow][j])) {
+                        importanceData[rankRow][i] += 1;
+                    }
+                }
+
+                importanceData[weightedRow][i] = (importanceData[totalRow][i] / total).toFixed(3);
+            }
+
+            importanceSheet.setData(importanceData);
+        }
+
+        directions = ['Direction of improvement', '', ''];
+        marketValues = ['Market Value', '', ''];
+        targetValues = ['Target Value', '', ''];
+        marketValuesForImportance = ['Market Value', ''];
+        targetValuesForImportance = ['Target Value', ''];
+
+{% for echc in echc_data %}
+        echcIDs.push({{ echc.echc_id }});
+        directions.push(directionSymbols['{{ echc.direction }}']);
+        marketValues.push('{{ echc.market_value }}');
+        targetValues.push('{{ echc.target_value }}');
+        marketValuesForImportance.push('{{ echc.market_value }}');
+        targetValuesForImportance.push('{{ echc.target_value }}');
+{% endfor %}
+        data.push(directions);
+
+        importanceData.push(marketValuesForImportance);
+        importanceData.push(targetValuesForImportance);
+
+{% for atv, importance in ahp_data %}
+        atvIDs.push({{ atv.atv_id }});
+
+        row = Array(echcCount + 3).fill('');
+        row[1] = '{{ atv.requirement }}';
+        row[2] = {{ importance }};
+        data.push(row);
+
+        row = Array(atvCount + 2).fill('');
+        row[1] = '{{ atv.requirement }}';
+        importanceData.push(row);
+{% endfor %}
+
+{% for atv in hoq_data %}
+    {% for v in atv.hoq_values %}
+        // {{v.echc.echc_order }} {{ v.echc.characteristic }}
+        data[dataStartRow + {{ atv.atv_order - 1}}][dataStartColumn + {{ v.echc.echc_order - 1}}] = '{{ v.value }}'
+    {% endfor %}
+{% endfor %}
+
+        data[1][0] = 'Voice of Customers';
+        data.push(marketValues);
+        data.push(targetValues);
+
+        importanceData[2][0] = 'Voice of Customers';
+
+        row = Array(atvCount + 2).fill('');
+        importanceData.push(row);
+
+        row = Array(atvCount + 2).fill('');
+        row[0] = 'Rank';
+        importanceData.push(row);
+
+        row = Array(atvCount + 2).fill('');
+        row[0] = 'Weighted Importance';
+        importanceData.push(row);
+
+        let sheet = jspreadsheet(document.getElementById('relationship_table'), {
+            data: data,
+            columns: [
+                {title: ' ', width: 200, readOnly: true},
+                {title: ' ', width: 250, readOnly: true},
+                {title: 'Customer Importance', width: 50, readOnly: true, type: 'numeric', mask: '0.000'},
+{% for echc in echc_data %}
+                {title: '{{ echc.characteristic }}', width: 50},
+{% endfor %}
+            ],
+            mergeCells: {
+                'A1': [2, 1],
+                'A2': [1, atvCount],
+                'A{{ ahp_data | length + 2 }}': [2, 1],
+                'A{{ ahp_data | length + 3 }}': [2, 1],
+            },
+            allowInsertColumn: false,
+            allowInsertRow: false,
+            allowDeleteRow: false,
+            editable: {% if closed %} false {% else %} true {% endif %}
+        });
+
+        let importanceSheet = jspreadsheet(document.getElementById('importance_table'), {
+            data: importanceData,
+            columns: [
+                {title: ' ', width: 200, readOnly: true},
+                {title: ' ', width: 300, readOnly: true},
+{% for echc in echc_data %}
+                {title: '{{ echc.characteristic }}', width: 50, readOnly: true},
+{% endfor %}
+            ],
+            mergeCells: {
+                'A1': [2, 1],
+                'A2': [2, 1],
+                'A3': [1, atvCount],
+                'A{{ ahp_data | length + 3 }}': [2, 1],
+                'A{{ ahp_data | length + 4 }}': [2, 1],
+                'A{{ ahp_data | length + 5 }}': [2, 1],
+            },
+            allowInsertColumn: false,
+            allowInsertRow: false,
+            allowDeleteRow: false,
+        });
+
+        updateImportance();
+
+        $('.update-importance').click(function() {
+            updateImportance();
+        });
+
+        $('.save').click(function() {
+            var sheetData = sheet.getData();
+
+            points = []
+            for (let i = dataStartRow; i < dataOverRow; i++) {
+                row = [atvIDs[i - dataStartRow]];
+                for (let j = dataStartColumn; j < dataOverColumn; j++) {
+                    value = Number(sheetData[i][j]);
+                    if ((!$.isNumeric(sheetData[i][j]) || !Number.isInteger(value)) || value < 0) {
+                        alert('Voice of Customer의 모둔 항목에 0 이상의 자연수를 입력하세요.' + i + ',' + j +': ' + sheetData[i][j]);
+                        return;
+                    }
+
+                    row.push(value);
+                }
+                points.push(row);
+            }
+
+            values = []
+            for (let i = dataStartColumn; i < dataOverColumn; i++) {
+                values.push([echcIDs[i - dataStartColumn], sheetData[dataOverRow][i], sheetData[dataOverRow + 1][i]]);
+            }
+
+            data = [points, values];
+
+            call_api('/api/designs/{{ design.design_id }}/tasks/{{ task.task_id }}/hoq', {
+                method: 'PUT',
+                data: data,
+                callback: function() {
+                    window.location.href = '/designs/{{ design.design_id }}/steps/{{ task.step_id }}';
+                }
+            });
+        });
+    })()
+</script>
+{% endblock %}

@@ -1,0 +1,79 @@
+{% extends "layout.html" %}
+
+{% block style %}
+<link rel="stylesheet" href="{{ url_for('static', path='/css/jspreadsheet-4/jspreadsheet.min.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/jspreadsheet-4/jsuites.min.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="h4">고객 요구사항 분류표</div>
+<div id="spreadsheet"></div>
+
+<div class="text-center">
+    {% if not closed %}
+    <button class="save btn btn-primary" type="button">Save</button>
+    <a class="btn btn-secondary" href="/designs/{{ design.design_id }}/steps/{{ task.step_id }}">Cancel</a>
+    {% endif %}
+</div>
+
+{% endblock %}
+
+{% block script %}
+<script src="{{ url_for('static', path='/js/jspreadsheet-4/jspreadsheet.min.js') }}"></script>
+<script src="{{ url_for('static', path='/js/jspreadsheet-4/jsuites.min.js') }}"></script>
+
+<script>
+(() => {
+    const data = [];
+{% if atv_data %}
+    {% for row in atv_data %}
+        data.push([{{ row.atv_id }}, '{{ row.requirement }}', '{{ row.note }}'])
+    {% endfor %}
+{% else %}
+    data.push([]);
+{% endif %}
+    const columns = ['atv_id', 'requirement', 'note'];
+
+    let sheet = jspreadsheet(document.getElementById('spreadsheet'), {
+        data: data,
+        columns: [
+            {title: '', type: 'hidden'},
+            {title: '고객 요구사항', width: 500, align: 'left'},
+            {title: '비고', width: 500, align: 'left'}
+        ],
+        allowInsertColumn: false,
+        editable: {% if closed %} false {% else %} true {% endif %},
+    });
+
+    $('.save').click(function() {
+        var data = sheet.getData();
+        var table = [];
+
+        for (let i = 0; i < data.length; i++) {
+            if (data[i][1].trim() == '') {
+                alert('고객 요구사항을 입력하세요: row ' + (i + 1));
+                return;
+            }
+
+            row = {}
+            for (let j = 0; j < columns.length; j++) {
+                row[columns[j]] = data[i][j];
+                if (row['atv_id'] == '') {
+                    row['atv_id'] = 0;
+                }
+            }
+            row['atv_order'] = i + 1;
+            table.push(row);
+        }
+
+        call_api('/api/designs/{{ design.design_id }}/tasks/{{ task.task_id }}/atv', {
+            method: 'PUT',
+            data: table,
+            callback: function() {
+                window.location.href = '/designs/{{ design.design_id }}/steps/{{ task.step_id }}';
+            }
+        });
+    });
+})()
+</script>
+{% endblock %}

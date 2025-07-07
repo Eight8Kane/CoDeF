@@ -1,0 +1,906 @@
+{% extends "layout.html" %}
+
+{% from "procedures/procedure_forms.html" import phase_symbols, step_symbols %}
+
+{% macro step_item(step, category) %}
+    {% if current_step and step.step_id == current_step.step_id %}
+        <span id="current_step" class="title text-danger">{{ step.title }}</span>
+    {% else %}
+        <a class="step-item title text-decoration-none text-dark fs-6" href="/admin/step_edit/{{ step.step_id }}">
+            {{ step.title }}
+        </a>
+    {% endif %}
+    {% if editable %}
+        <i class="task-add bi bi-plus-circle fs-5 clickable" data-step_id="{{ step.step_id }}"></i>
+    {% endif %}
+    {% if step.tasks %}
+        <ul id="step_{{ step.step_id }}" class="task-list ms-2 collapse" data-step_id="{{ step.step_id }}" aria-expended="false ">
+        {% for task in step.tasks %}
+            <li data-task_id="{{ task.task_id }}">
+            {% if current_task and task.task_id == current_task.task_id %}
+                <span id="current_task" class="title text-danger">{{ task.title }}</span>
+            {% else %}
+                <a class="task-item title text-decoration-none text-dark fs-6" href="/admin/task_edit/{{ task.task_id }}">
+                    {{ task.title }}
+                </a>
+            {% endif %}
+            {% if editable %}
+                <i class="task-remove bi bi-trash fs-5 clickable" data-task_id="{{ task.task_id }}"></i>
+            {% endif %}
+            </li>
+        {% endfor %}
+        </ul>
+    {% elif editable %}
+        {% if category %}
+        <i class="category-remove bi bi-trash fs-5 clickable" data-category_id="{{ category.category_id }}"></i>
+        {% else %}
+        <i class="step-remove bi bi-trash fs-5 clickable" data-step_id="{{ step.step_id }}"></i>
+        {% endif %}
+    {% endif %}
+{% endmacro %}
+
+{% block style %}
+<link rel="stylesheet" href="{{ url_for('static', path='/css/easymde.min.css') }}" />
+<style>
+    @media (min-width: 1600px) {
+        .container {
+            max-width: 1520px;
+        }
+    }
+    @media (min-width: 2000px) {
+        .container {
+            max-width: 1920px;
+        }
+    }
+
+    .btn-toggle {
+        padding: 0;
+        font-weight: 600;
+        color: var(--bs-emphasis-color);
+        color: var(--bs-emphasis-color);
+        background-color: transparent;
+    }
+    .btn-toggle:hover,
+    .btn-toggle:focus {
+        color: rgba(var(--bs-emphasis-color-rgb), .85);
+        background-color: var(--bs-tertiary-bg);
+    }
+
+    .btn-toggle::before {
+        width: 1.25em;
+        line-height: 0;
+        content: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='rgba%280,0,0,.5%29' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M5 14l6-6-6-6'/%3e%3c/svg%3e");
+        transition: transform .35s ease;
+        transform-origin: .5em 50%;
+    }
+
+    .btn-toggle[aria-expanded="true"] {
+        color: rgba(var(--bs-emphasis-color-rgb), .85);
+    }
+    .btn-toggle[aria-expanded="true"]::before {
+        transform: rotate(90deg);
+    }
+
+    .btn-toggle-nav a {
+        padding: .1875rem .5rem;
+        margin-top: .125rem;
+        margin-left: 1.25rem;
+    }
+    .btn-toggle-nav a:hover,
+    .btn-toggle-nav a:focus {
+        background-color: var(--bs-tertiary-bg);
+    }
+
+    .phase-list {
+        counter-reset: phase-item;
+    }
+
+    .phase-list li {
+        counter-increment: phase-item;
+    }
+
+    .phase-list li .number::before {
+        content: counter(phase-item, upper-alpha);
+    }
+
+    .category-list {
+        counter-reset: category-item;
+    }
+
+    .category-list li {
+        counter-increment: category-item;
+    }
+
+    .category-list li .number::before {
+        content: counter(category-item) ". ";
+    }
+
+    .step-list {
+        counter-reset: step-item;
+    }
+
+    .step-list li {
+        counter-increment: step-item;
+    }
+
+    .step-list li .number::before {
+        content: counter(step-item, lower-roman) ". ";
+    }
+
+    .task-list {
+        counter-reset: task-item;
+    }
+
+    .task-list li {
+        counter-increment: task-item;
+    }
+</style>
+{% endblock %}
+
+{% block top %}
+{% endblock %}
+
+{% block content %}
+{% if procedure %}
+    {% if editable %}
+    <form id="publish_form" class="mb-4 d-flex">
+        <div class="flex-grow-1">
+            <input type="text" class="form-control" id="name" placeholder="Enter version name" name="name" required>
+        </div>
+        <div class="flex-grow-1 ms-2">
+            <input type="text" class="form-control" id="note" placeholder="Enter description"  name="note" required>
+        </div>
+        <div class="ms-2">
+            <button class="w-100 btn btn-primary px-4" type="submit">Publish</button>
+        </div>
+        <div class="ms-2">
+            <a class="w-100 btn btn-outline-dark px-4" href="/admin/procedures">History</a>
+        </div>
+    </form>
+    {% else %}
+    <div class="alert alert-light" role="alert">
+        <div class="fw-bold">{{ procedure_info.name }}</div>
+        <div>{{ procedure_info.note }}</div>
+    </div>
+    {% endif %}
+{% endif %}
+
+<div class="d-flex">
+    <div class="me-5" style="width: 400px;">
+        <ol class="list-unstyled phase-list">
+        {% for categories in procedure %}
+            <li>
+                <button class="btn btn-toggle d-inline-flex align-items-center rounded border-0 collapsed" data-bs-toggle="collapse" data-bs-target="#phase_{{ loop.index }}"  aria-expanded="false"></button>
+                <span class="number"></span>
+            {% if editable %}
+                <i class="category-add bi-folder-plus fs-5 clickable" data-phase="{{ loop.index }}" data-as="category"></i>
+                <i class="category-add bi-clipboard-plus fs-5 clickable" data-phase="{{ loop.index }}" data-as="step"></i>
+            {% endif %}
+                <br>
+                <ol id="phase_{{ loop.index }}" class="category-list collapse list-unstyled ms-3" data-phase="{{ loop.index }}">
+                {% for category in categories %}
+                    <li data-category_id="{{ category.category_id }}">
+                    {% if category.is_step %}
+                        <button class="btn btn-toggle d-inline-flex align-items-center rounded border-0 collapsed" data-bs-toggle="collapse" data-bs-target="#step_{{ category.steps[0].step_id }}"  aria-expanded="false"></button>
+                        <span class="number"></span>
+                        {{ step_item(category.steps[0], category) }}
+                    {% else %}
+                        <button class="btn btn-toggle d-inline-flex align-items-center rounded border-0 collapsed" data-bs-toggle="collapse" data-bs-target="#category_{{ category.category_id }}"  aria-expanded="false"></button>
+                        <span class="number"></span>
+                        {% if current_category and current_category.category_id == category.category_id %}
+                        <span id="current_category" class="title text-danger">{{ category.title }}</span>
+                        {% else %}
+                        <a class="title text-decoration-none text-dark fs-6" href="/admin/category_edit/{{ category.category_id }}">
+                            {{ category.title }}
+                        </a>
+                        {% endif %}
+                        {% if editable %}
+                            <i class="step-add bi bi-clipboard-plus fs-5 clickable" data-category_id="{{ category.category_id }}"></i>
+                            {% if not category.steps %}
+                            <i class="category-remove bi bi-trash fs-5 clickable" data-category_id="{{ category.category_id }}"></i>
+                            {% endif %}
+                        {% endif %}
+                        <ol id="category_{{ category.category_id }}" class="step-list collapse list-unstyled ms-3" data-category_id="{{ category.category_id }}">
+                            {% for step in category.steps %}
+                            <li data-step_id="{{ step.step_id }}">
+                                <button class="btn btn-toggle d-inline-flex align-items-center rounded border-0 collapsed" data-bs-toggle="collapse" data-bs-target="#step_{{ step.step_id }}"  aria-expanded="false"></button>
+                                <span class="number"></span>
+                                {{ step_item(step, None) }}
+                            </li>
+                            {% endfor %}
+                        </ol>
+                    {% endif %}
+                    </li>
+                {% endfor %}
+                </ol>
+            </li>
+        {% endfor %}
+        </ol>
+    </div>
+    <div class="w-100">
+        {% if current_category %}
+        <h2>Design Category</h2>
+        <hr class="mt-0">
+        <div class="card mb-2">
+            <div class="card-body">
+                <form id="category_form">
+                    <div class="mb-3 row">
+                        <label for="category_title" class="col-2 col-form-label">Title</label>
+                        <div class="col-10">
+                            <input type="text" class="form-control" id="category_title" name="title" value="{{ current_category.title }}" {% if not editable %} readonly {% else %} required {% endif %}>
+                        </div>
+                    </div>
+            {% if editable %}
+                    <div class="pt-2 text-end">
+                        <button class="btn btn-primary" type="submit">OK</button>
+                    </div>
+            {% endif %}
+                </form>
+            </div>
+        </div>
+        {% endif %}
+        {% if current_step %}
+        <h2>Design Step</h2>
+        <hr class="mt-0">
+        <div class="card mb-2">
+            <div class="card-body">
+                <div id="step_view">
+                    <div class="mb-3 row"><h3 id="step_view_title">{{ current_step.title }}</h3></div>
+                    <div id="step_view_guide" class="guide" style="overflow: auto;"></div>
+            {% if editable %}
+                    <div class="pt-2 text-end"><button id="step_edit" class="btn btn-outline-dark">Edit</button></div>
+            {% endif %}
+                </div>
+                <form id="step_form" style="display: none;">
+                    <div class="row mb-3">
+                        <label for="step_title" class="col-2 col-form-label">Title</label>
+                        <div class="col-10">
+                            <input type="text" class="form-control" id="step_title" name="title" value="{{ current_step.title }}" required>
+                        </div>
+                    </div>
+                    <label for="guide" class="col-2 col-form-label">Guide</label>
+                    <textarea id="guide" class="form-control guide">{{ current_step.guide }}</textarea>
+                    <input type="hidden" id="guide_value" name="guide" value="{{ current_step.guide }}">
+                    <div class="pt-2 text-end">
+                        <button class="btn btn-primary" type="submit">OK</button>
+                        <button class="step-cancel btn btn-secondary" type="button">Cancel</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <!--
+        <div class="d-flex justify-content-between pt-2">
+            <h2>Tasks</h2>
+            <div><button id="task_add" class="btn btn-outline-dark">Add</button></div>
+        </div>
+        <hr class="mt-0">
+        -->
+        <div id="tasks"></div>
+        {% endif %}
+        {% if current_task %}
+        <h2>Design Task</h2>
+        <hr class="mt-0">
+        <div class="card mb-2">
+            <div class="card-body">
+                <div id="task_view">
+                    <div><h3>{{ current_task.title }}</h3></div>
+                    <div style="white-space: pre-wrap;">{{ current_task.description }}</div>
+                    <h4 class="mt-4">Output</h4>
+                    <hr class="m-0">
+                    <div id="task_output" class="p-2" {% if not current_task.output_code %} style="display: none;" {% endif %}>
+                        <div id="task_view_output" class="mb-2">
+                            [{{ current_task.output_code }}] {{ current_task.output_name }}
+                        </div>
+            {% if current_task.output_type == OutputType.File %}
+                        <div class="row">
+                            <div class="col-2">Template</div>
+                            <div class="col">
+                {% if current_task.template_file %}
+                                uploaded at {{ current_task.template_uploaded_at.strftime('%Y-%m-%d %H:%M:%S') }}
+                                <a class="btn btn-outline-dark btn-sm" href="/api/tasks/{{ current_task.task_id }}/template_file">
+                                    <i class="bi bi-download"></i>
+                                </a>
+                {% else %}
+                                <div class="text-secondary">Not uploaded</div>
+                {% endif %}
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-2">Example</div>
+                            <div class="col">
+                {% if current_task.example_file %}
+                                uploaded at {{ current_task.example_uploaded_at.strftime('%Y-%m-%d %H:%M:%S') }}
+                                <a class="btn btn-outline-dark btn-sm" href="/api/tasks/{{ current_task.task_id }}/example_file">
+                                    <i class="bi bi-download"></i>
+                                </a>
+                {% else %}
+                                <div class="text-secondary">Not uploaded</div>
+                {% endif %}
+                            </div>
+                        </div>
+            {% endif %}
+                        <div class="row">
+                            <div class="col-2">Type</div>
+                            <div class="col">{{ current_task.output_type.value }}</div>
+                        </div>
+                    </div>
+                    <div id="task_no_output" class="p-2 text-secondary" {% if current_task.output_code %} style="display: none;" {% endif %}>
+                        No Document
+                    </div>
+                    <div class="d-flex mt-4"><h4>Dependency</h4></div>
+                    <hr class="m-0">
+                    <ul>
+            {% for leader in current_task.leaders %}
+                        <li>
+                {% if leader.step.category.is_step %}
+                            {{ phase_symbols[leader.step.category.phase] }}-{{ leader.step.category.category_order }}-{{ leader.task_order }}.
+                            {{ leader.title }}
+                {% else %}
+                            {{ phase_symbols[leader.step.category.phase] }}-{{ leader.step.category.category_order }}-{{ step_symbols[leader.step.step_order] }}-{{ leader.task_order }}.
+                            {{ leader.title }}
+                {% endif %}
+                        </li>
+            {% endfor %}
+                    </ul>
+            {% if editable %}
+                    <div class="pt-2 text-end"><button id="task_edit" class="btn btn-outline-dark">Edit</button></div>
+            {% endif %}
+                </div>
+                <form id="task_form" style="display: none;">
+                    <div class="row mb-2">
+                        <label for="task_title" class="col-2 col-form-label">Title</label>
+                        <div class="col-10">
+                            <input type="text" id="task_title" name="title" class="form-control" value="{{ current_task.title }}" required>
+                        </div>
+                    </div>
+                    <div class="row mb-2">
+                        <label for="task_description" class="col-2 col-form-label">Description</label>
+                        <div class="col-10">
+                            <textarea id="task_description" name="description" class="form-control">{{ current_task.description }}</textarea>
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <input type="checkbox" id="has_output" class="form-check-input align-middle" {% if current_task.output_code %} checked {% endif %}>
+                        <label for="has_output" class="h4">Output</label>
+                    </div>
+                    <hr class="m-0">
+                    <fieldset id="task_output_fields" {% if not current_task.output_code %} disabled {% endif %}>
+                        <div class="row mt-1">
+                            <label for="output_code" class="col-2 col-form-label">Code</label>
+                            <div class="col-10">
+                                <input type="text" id="output_code" name="output_code" class="form-control" value="{{ current_task.output_code }}" required>
+                            </div>
+                        </div>
+                        <div class="row mt-1">
+                            <label for="output_name" class="col-2 col-form-label">Name</label>
+                            <div class="col-10">
+                                <input type="text" id="output_name" name="output_name" class="form-control" value="{{ current_task.output_name }}" required>
+                            </div>
+                        </div>
+                        <div class="row mt-1">
+                            <label for="output_type" class="col-2 col-form-label">Type</label>
+                            <div class="col-10">
+                                <select id="output_type" name="output_type" class="output-type form-select">
+                {% for type in OutputType %}
+                                    <option value="{{ type.name }}" {% if current_task.output_type == type %} selected {% endif %}>
+                                        {{ type.value }}
+                                    </option>
+                {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row mt-1 file-output-info" {% if current_task.output_type and current_task.output_type != OutputType.File %} style="display: none" {% endif %}>
+                            <label for="template_file" class="col-2 col-form-label">Template</label>
+                            <div class="col-10">
+                                <input id="template_{{ element_id }}" name="template" class="form-control" type="file" id="template_file">
+                            </div>
+                        </div>
+                        <div class="row mt-1 file-output-info" {% if current_task.output_type and current_task.output_type != OutputType.File %} style="display: none" {% endif %}>
+                            <label for="example_file" class="col-2 col-form-label">Example</label>
+                            <div class="col-10">
+                                <input id="example_{{ element_id }}" name="example" class="form-control" type="file" id="example_file">
+                            </div>
+                        </div>
+                        <div class="row mt-1 md-output-info" {% if current_task.output_type != OutputType.MD %} style="display: none" {% endif %}>
+                            <label for="template_md" class="col-2 col-form-label">Template</label>
+                            <div class="col-10">
+                                <textarea id="template_md" class="form-control">{{ current_task.template_markdown }}</textarea>
+                            </div>
+                        </div>
+                        <div class="row mt-1 md-output-info" {% if current_task.output_type != OutputType.MD %} style="display: none" {% endif %}>
+                            <label for="example_md" class="col-2 col-form-label">Example</label>
+                            <div class="col-10">
+                                <textarea id="example_md" class="form-control">{{ current_task.example_markdown }}</textarea>
+                            </div>
+                        </div>
+                    </fieldset>
+                    <div class="d-flex mt-4">
+                        <h4>Dependency</h4>
+                        <i class="dependency-edit bi-pencil-square fs-5 px-2 clickable"></i>
+                    </div>
+                    <hr class="m-0">
+                    <ul id="leaders">
+                {% for leader in current_task.leaders %}
+                        <input type="hidden" name="leading_task_ids" value="{{ leader.task_id }}">
+                        <li>
+                    {% if leader.step.category.is_step %}
+                            {{ phase_symbols[leader.step.category.phase] }}-{{ leader.step.category.category_order }}-{{ leader.task_order }}.
+                            {{ leader.title }}
+                    {% else %}
+                            {{ phase_symbols[leader.step.category.phase] }}-{{ leader.step.category.category_order }}-{{ step_symbols[leader.step.step_order] }}-{{ leader.task_order }}.
+                            {{ leader.title }}
+                    {% endif %}
+                        </li>
+                {% endfor %}
+                    </ul>
+                    <div class="pt-2 text-end">
+                        <button class="btn btn-primary" type="submit">OK</button>
+                        <button class="task-cancel btn btn-secondary" type="button">Cancel</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <div id="modal"></div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block script %}
+<script src="{{ url_for('static', path='/js/marked.min.js') }}"></script>
+<script src="{{ url_for('static', path='/js/Sortable.js') }}"></script>
+<script src="{{ url_for('static', path='/js/easymde.min.js') }}"></script>
+<script src="{{ url_for('static', path='/js/mathJax.js') }}"></script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+<script>
+(() => {
+    $('#publish_form').submit(function(event) {
+        event.preventDefault();
+
+        submit_form_data('/api/procedures', {
+            form: $(this)[0],
+            method: 'POST',
+            callback: function() {
+                window.location.href = '/admin/procedures';
+            },
+            on_error: function(status, data) {
+                if (status == 409) {
+                    message = '';
+                    if (data['dependency_errors'].length) {
+                        message = '* Some tasks have invalid dependencies.\n';
+                        for (task of data['dependency_errors']) {
+                            message += ` - ${task}\n`;
+                        }
+                    }
+
+                    if (data['tool_errors'].length) {
+                        message += '* Some tools are incorrectly applied to the task.\n';
+                        for (error of data['tool_errors']) {
+                            if (error[0] == 'DUP') {
+                                message += ` - ${error[1]} is applied to multiple tasks (${error[2].join(', ')})\n`;
+                            }
+                            else if (error[0] == 'DEP') {
+                                if (error[4]) {
+                                    message += ` - ${error[1]}(${error[2]}) is applied before ${error[3]}(${error[4]}).\n`;
+                                }
+                                else {
+                                    message += ` - ${error[3]} is not applied and ${error[1]} is applied to the task "${error[2]}".\n`;
+                                }
+                            }
+                        }
+                    }
+
+                    if (message) {
+                        alert('Fail to publish procedure.\n' + message);
+                        return;
+                    }
+                }
+
+                alert('Process failed');
+            }});
+    });
+
+    $('.category-add').click(function() {
+        var is_step = $(this).data('as') == 'step';
+        call_api('/api/categories/', {
+            method: 'POST',
+            data: {
+                'title': is_step ? 'New Step' : 'New Category' ,
+                'phase': $(this).data('phase'),
+                'is_step': is_step
+            },
+            callback: function(data) {
+                if (is_step) {
+                    window.location.href = '/admin/step_edit/' + data.steps[0].step_id;
+                }
+                else {
+                    window.location.href = '/admin/category_edit/' + data.category_id;
+                }
+            }
+        });
+    });
+
+    $('.category-remove').click(function() {
+        element = $(this).closest('li');
+        if (confirm('Are you sure you want to delete the category "' + element.find('.title').text().trim() + '"?')) {
+            category_id = $(this).data('category_id');
+            call_api('/api/categories/' + category_id, {
+                method: 'DELETE',
+                callback: function(data) {
+                    if (category_id == '{{ current_category.category_id if current_category else current_step.category.category_id if current_step and current_step.category.is_step else 0 }}') {
+                        window.location.href = '/admin/procedures/0';
+                    }
+                    else {
+                        window.location.reload();
+                    }
+                }
+            });
+        }
+    });
+
+    $('.step-add').click(function() {
+        call_api('/api/steps/',{
+            method: 'POST',
+            data: {
+                'title': 'New Step',
+                'category_id': $(this).data('category_id')
+            },
+               callback: function(data) {
+                window.location.href = '/admin/step_edit/' + data.step_id;
+            }
+        });
+    });
+
+    $('.step-remove').click(function() {
+        step_id = $(this).data('step_id');
+        element = $(this).closest('li');
+        if (confirm('Are you sure you want to delete the step "' + element.find('.title').text().trim() + '"?')) {
+            call_api('/api/steps/' + step_id, {
+                method: 'DELETE',
+                callback: function(data) {
+                    if (step_id == '{{ current_step.step_id if current_step else 0 }}') {
+                        window.location.href = '/admin/procedures/0';
+                    }
+                    else {
+                        window.location.reload();
+                    }
+                }
+            });
+        }
+    });
+
+    $('.task-add').click(function() {
+        call_api('/api/tasks/', {
+            method: 'POST',
+            data: {
+                'title': 'New Task',
+                'step_id': $(this).data('step_id')
+            },
+            callback: function(data) {
+                window.location.href = '/admin/task_edit/' + data.task_id;
+            }
+        });
+    });
+
+    $('.task-remove').click(function() {
+        task_id = $(this).data('task_id');
+        element = $(this).closest('li');
+        if (confirm('Are you sure you want to delete the task "' + element.find('.title').text().trim() + '"?')) {
+            call_api('/api/tasks/' + task_id, {
+                method: 'DELETE',
+                callback: function(data) {
+                    if (task_id == '{{ current_task.task_id if current_task else 0 }}') {
+                        window.location.href = '/admin/procedures/0';
+                    }
+                    else {
+                        window.location.reload();
+                    }
+                }
+            });
+        }
+    });
+
+{% if current_category %}
+    new bootstrap.Collapse('#phase_{{ current_category.phase }}', {toggle: true});
+
+    $('#category_form').submit(function(event) {
+        event.preventDefault();
+        submit_form_data('/api/categories/{{ current_category.category_id }}', {
+            form: this,
+            method: 'PUT',
+            callback: function() {
+                window.location.reload();
+            }});
+    });
+{% endif %}
+
+{% if current_step %}
+    new bootstrap.Collapse('#phase_{{ current_step.category.phase }}', {toggle: true});
+    {% if not current_step.category.is_step %}
+        new bootstrap.Collapse('#category_{{ current_step.category.category_id }}', {toggle: true});
+    {% endif %}
+
+    var guideMDE = new EasyMDE({
+        element: document.getElementById('guide'),
+        imageUploadFunction: function(file, onSuccess, onError) {
+            formData = new FormData();
+            formData.append('file', file);
+
+            fetch('/api/images/procedure', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                onSuccess(data.uri);
+            })
+            .catch(error => {
+                onError(error.message);
+            });
+        },
+        uploadImage: true,
+        previewRender: function(plainText) {
+            setTimeout(() => {
+                convertMathJax();
+            }, 100);
+            return marked.parse(plainText);
+        }
+    });
+
+    $('#step_view_guide').html(marked.parse(guideMDE.value()));
+
+    {% for task in current_step.tasks %}
+    /*
+        $.get('/admin/tasks/{{ task.task_id }}', function(data) {
+            $('#tasks').append(data);
+        })
+    */
+    {% endfor %}
+
+    $('#step_edit').click(function(event) {
+        $('#step_view').hide();
+        $('#step_form').show();
+    });
+
+    $('#step_form').submit(function(event) {
+        event.preventDefault();
+        $('#guide_value').val(guideMDE.value());
+        submit_form_data('/api/steps/{{ current_step.step_id }}', {
+            form: this,
+            method: 'PUT',
+            callback: function(data) {
+                $('#step_view_title').text(data.title);
+                $('#step_view_guide').html(marked.parse(data.guide));
+                $('#step_title').prop('defaultValue', data.title);
+                $('#current_step').text(data.title);
+
+                $('#step_view').show();
+                $('#step_form').hide();
+            }});
+    });
+
+    $('.step-cancel').click(function(event) {
+        window.location.reload();
+    });
+{% endif %}
+
+{% if current_task %}
+    new bootstrap.Collapse('#phase_{{ current_task.step.category.phase }}', {toggle: true});
+    {% if not current_task.step.category.is_step %}
+        new bootstrap.Collapse('#category_{{ current_task.step.category.category_id }}', {toggle: true});
+    {% endif %}
+    new bootstrap.Collapse('#step_{{ current_task.step.step_id }}', {toggle: true});
+
+    var templateMDE = new EasyMDE({
+        element: document.getElementById('template_md'),
+        imageUploadFunction: function(file, onSuccess, onError) {
+            formData = new FormData();
+            formData.append('file', file);
+
+            fetch('/api/images/procedure', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                onSuccess(data.uri);
+            })
+            .catch(error => {
+                onError(error.message);
+            });
+        },
+        uploadImage: true,
+        previewRender: function(plainText) {
+            setTimeout(() => {
+                convertMathJax();
+            }, 100);
+            return marked.parse(plainText);
+        }
+    });
+
+    var exampleMDE = new EasyMDE({
+        element: document.getElementById('example_md'),
+        imageUploadFunction: function(file, onSuccess, onError) {
+            formData = new FormData();
+            formData.append('file', file);
+
+            fetch('/api/images/procedure', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                onSuccess(data.uri);
+            })
+            .catch(error => {
+                onError(error.message);
+            });
+        },
+        uploadImage: true,
+        previewRender: function(plainText) {
+            setTimeout(() => {
+                convertMathJax();
+            }, 100);
+            return marked.parse(plainText);
+        }
+    });
+
+    $('#task_edit').click(function(event) {
+        $('#task_view').hide();
+        $('#task_form').show();
+    });
+
+    $('#has_output').change(function(event) {
+        $('#task_output_fields').attr('disabled', !$(this)[0].checked);
+    });
+
+    $('#task_form').submit(function(event) {
+        event.preventDefault();
+
+        form = $(this)[0];
+
+        if (!validate_form($(this))) {
+            return;
+        }
+
+        data = new FormData();
+        if (form.template.files.length > 0) {
+            data.append('template', form.template.files[0]);
+        }
+
+        if (form.example.files.length > 0) {
+            data.append('example', form.example.files[0]);
+        }
+
+        form_data = new FormData(form);
+        info = Object.fromEntries(form_data);
+        info.leading_task_ids = form_data.getAll('leading_task_ids');
+        info.template_markdown = templateMDE.value();
+        info.example_markdown = exampleMDE.value();
+        data.append('info', JSON.stringify(info));
+
+        submit_multipart_data(data, 'PUT', '/api/tasks/{{ current_task.task_id }}', function(data) {
+            window.location.reload();
+        });
+    });
+
+    $('.output-type').change(function(event) {
+        let type = $(this).val();
+        if (type == '{{ OutputType.File.name }}') {
+            $('.file-output-info').show();
+            $('.md-output-info').hide();
+        }
+        else {
+            $('.file-output-info').hide();
+            if (type == '{{ OutputType.MD.name }}') {
+                $('.md-output-info').show();
+            }
+            else {
+                $('.md-output-info').hide();
+            }
+        }
+    });
+
+    $('.task-cancel').click(function(event) {
+        window.location.reload();
+    });
+
+    $('.dependency-edit').click(function() {
+        $.get('/admin/dependency_selector?trailing_task_id={{ current_task.task_id }}', function(data) {
+            $('#modal').html(data);
+
+            $('input[name="leading_task_ids"]').each(function() {
+                $('#task_checkbox_' + $(this).val()).prop('checked', true);
+            });
+
+            modal = new bootstrap.Modal('#dependency_modal');
+
+            $('#dependency_apply').click(function() {
+                list = $('#leaders');
+                list.empty();
+
+                $('input[name="selected_tasks"]:checked').each(function() {
+                    list.append('<input type="hidden" name="leading_task_ids" value="' + $(this).val() + '">');
+                    list.append('<li>' + $('#task_label_' + $(this).val()).text() + '</li>');
+                });
+
+                modal.hide();
+            });
+
+            $('#dependency_modal').on('hidden.bs.modal', function () {
+                document.activeElement.blur();
+            });
+
+            modal.show();
+        })
+    });
+{% endif %}
+
+    $('.category-list').each(function() {
+        new Sortable($(this)[0], {
+            group: 'categories',
+            sort: true,
+            fallbackOnBody: true,
+            swapThreshold: 0.65,
+            onEnd: function(event) {
+                call_api('/api/categories/' + event.item.dataset.category_id + '/order', {
+                    method: 'PUT',
+                    data: {
+                        'phase': event.to.dataset.phase,
+                        'category_order': event.newDraggableIndex + 1
+                    },
+                    callback: function(data) {},
+                    on_error: function() {
+                        event.from.insertBefore(event.item, event.from.children[event.oldIndex]);
+                    }
+                });
+            }
+        });
+    });
+
+    $('.step-list').each(function() {
+        new Sortable($(this)[0], {
+            group: 'steps',
+            sort: true,
+            fallbackOnBody: true,
+            swapThreshold: 0.65,
+            onEnd: function(event) {
+                call_api('/api/steps/' + event.item.dataset.step_id + '/order', {
+                    method: 'PUT',
+                    data: {
+                        'category_id': event.to.dataset.category_id,
+                        'step_order': event.newDraggableIndex + 1
+                    },
+                    callback: function(data) {},
+                    on_error: function() {
+                        event.from.insertBefore(event.item, event.from.children[event.oldIndex]);
+                    }
+                });
+            }
+        });
+    });
+
+    $('.task-list').each(function() {
+        new Sortable($(this)[0], {
+            group: 'tasks',
+            sort: true,
+            fallbackOnBody: true,
+            swapThreshold: 0.65,
+            onEnd: function(event) {
+                call_api('/api/tasks/' + event.item.dataset.task_id + '/order', {
+                    method: 'PUT',
+                    data: {
+                        'step_id': event.to.dataset.step_id,
+                        'task_order': event.newDraggableIndex + 1
+                    },
+                    callback: function(data) {},
+                    on_error: function(error) {
+                        event.from.insertBefore(event.item, event.from.children[event.oldIndex]);
+                    }
+                });
+            }
+        });
+    });
+})()
+</script>
+{% endblock %}

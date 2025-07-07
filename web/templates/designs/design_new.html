@@ -1,0 +1,43 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<form class="create-design">
+    <div class="mb-3 row">
+        <label for="name" class="col-2 col-form-label">Name</label>
+        <div class="col-10">
+            <input type="text" class="form-control" id="name" name="name" required>
+        </div>
+    </div>
+    <div class="mb-3 row">
+        <label for="description" class="col-2 col-form-label">Description</label>
+        <div class="col-10"><input type="text" class="form-control" id="description" name="description"></div>
+    </div>
+    <div class="mb-3 row">
+        <label for="project" class="col-2 col-form-label">Project</label>
+        <div class="col-10"><input type="text" class="form-control" id="project" name="project" required></div>
+    </div>
+    <div class="mb-3 row">
+        <label for="system" class="col-2 col-form-label">System</label>
+        <div class="col-10"><input type="text" class="form-control" id="system" name="system" required></div>
+    </div>
+    <div class="w-100 text-end mt-4">
+        <button class="btn btn-primary" type="submit">Create</button>
+        <a href="/designs" class="btn btn-secondary">Cancel</a>
+    </div>
+</form>
+{% endblock %}
+
+{% block script %}
+<script>
+    $('.create-design').submit(function(event) {
+        event.preventDefault();
+
+        submit_form_data('/api/designs', {
+            form: $(this)[0],
+            method: 'POST',
+            callback: function(design_id) {
+                window.location.href=`/designs/${design_id}/summary`;
+            }});
+    });
+</script>
+{% endblock %}

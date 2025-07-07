@@ -1,0 +1,55 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="text-end">
+    <a class="btn btn-outline-dark btn-sm" href="/admin/procedures/0">Edit Procedure</a>
+</div>
+
+<table class="table table-sm table-hover">
+    <thead>
+    <tr>
+        <th scope="col">Version Name</th>
+        <th scope="col">Description</th>
+        <th style="width: 60px;"></th>
+    </tr>
+    </thead>
+    <tbody>
+        {% for procedure in procedures -%}
+        <tr>
+            <th scope="row">{{ procedure.name }}</th>
+            <td>{{ procedure.note }}</td>
+            <td>
+            {% if loop.index == 1 %}
+                {% if deletable %}
+                <button class="delete btn btn-primary btn-sm" data-procedure_id="{{ procedure.procedure_id }}" style="width: 56px;">
+                    Delete
+                </button>
+                {% endif %}
+            {% else %}
+                <a href="/admin/procedures/{{ procedure.procedure_id }}" class="btn btn-outline-dark btn-sm" style="width: 56px;">
+                    View
+                </a>
+            {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}
+
+{% block script %}
+<script>
+    (() => {
+        $('.delete').click(function() {
+            if (confirm('Are you sure you want to delete current procedure?')) {
+                call_api('/api/procedures/' + $(this).data('procedure_id'), {
+                    method: 'DELETE',
+                    callback: function() {
+                        window.location.reload();
+                    }
+                });
+            }
+        });
+    })();
+</script>
+{% endblock %}
