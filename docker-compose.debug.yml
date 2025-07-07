@@ -1,0 +1,31 @@
+services:
+  app:
+    image: codef/app
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    command: ["sh", "-c", "pip install debugpy -t /tmp && python /tmp/debugpy --wait-for-client --listen 0.0.0.0:5678 -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload"]
+    ports:
+      - 8000:8000
+      - 5678:5678
+    env_file:
+      - web/.env.prod
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./web:/app
+    working_dir: /app
+#    command: python main.py
+
+  db:
+    image: postgres
+    restart: always
+    environment:
+      POSTGRES_PASSWORD: example
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./db/data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres"]

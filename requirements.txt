@@ -1,0 +1,14 @@
+asyncpg==0.29.0
+fastapi==0.104.1
+fastapi-mail==1.4.2
+fastapi-users==14.0.1
+fastapi-users-db-sqlalchemy==6.0.1
+Jinja2==3.1.2
+markdown-it-py==3.0.0
+mdit-plain==1.0.1
+pydantic==2.10.6
+pydantic-settings==2.8.1
+python-dotenv==1.0.0
+python-multipart==0.0.20
+SQLAlchemy==2.0.23
+uvicorn==0.24.0.post1
