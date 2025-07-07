@@ -1,0 +1,85 @@
+{% extends "layout.html" %}
+
+{% block style %}
+<link rel="stylesheet" href="{{ url_for('static', path='/css/jspreadsheet-4/jspreadsheet.min.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/jspreadsheet-4/jsuites.min.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="h4">공학적 특성 분류표</div>
+<div id="spreadsheet"></div>
+
+<div class="text-center">
+    {% if not closed %}
+    <button class="save btn btn-primary" type="button">Save</button>
+    <a class="btn btn-secondary" href="/designs/{{ design.design_id }}/steps/{{ task.step_id }}">Cancel</a>
+    {% endif %}
+</div>
+
+{% endblock %}
+
+{% block script %}
+<script src="{{ url_for('static', path='/js/jspreadsheet-4/jspreadsheet.min.js') }}"></script>
+<script src="{{ url_for('static', path='/js/jspreadsheet-4/jsuites.min.js') }}"></script>
+
+<script>
+(() => {
+    const data = [];
+{% if echc_data %}
+    {% for row in echc_data %}
+        data.push([{{ row.echc_id }}, '{{ row.direction }}', '{{ row.characteristic }}', '{{ row.note }}'])
+    {% endfor %}
+{% else %}
+    data.push([]);
+{% endif %}
+    const columns = ['echc_id', 'direction', 'characteristic', 'note'];
+
+    let sheet = jspreadsheet(document.getElementById('spreadsheet'), {
+        data: data,
+        columns: [
+            {title: '', type: 'hidden'},
+            {title: '개선 방향', width: 100, type: 'dropdown', source:[{'id':'1', 'name':'▲'}, {'id':'0', 'name':'•'}, {'id':'-1', 'name':'▼'}]},
+            {title: '공학적 특성', width: 400},
+            {title: '선정 이유', width: 500}
+        ],
+        allowInsertColumn: false,
+        editable: {% if closed %} false {% else %} true {% endif %},
+    });
+
+    $('.save').click(function() {
+        var data = sheet.getData();
+        var table = [];
+
+        for (let i = 0; i < data.length; i++) {
+            if (data[i][1] == '') {
+                alert('개선 방향을 선택하세요: row ' + (i + 1));
+                return;
+            }
+
+            if (data[i][2].trim() == '') {
+                alert('공학적 특성을 입력하세요: row ' + (i + 1));
+                return;
+            }
+
+            row = {}
+            for (let j = 0; j < columns.length; j++) {
+                row[columns[j]] = data[i][j];
+                if (row['echc_id'] == '') {
+                    row['echc_id'] = 0;
+                }
+            }
+            row['echc_order'] = i + 1;
+            table.push(row);
+        }
+
+        call_api('/api/designs/{{ design.design_id }}/tasks/{{ task.task_id }}/echc', {
+            method: 'PUT',
+            data: table,
+            callback: function() {
+                window.location.href = '/designs/{{ design.design_id }}/steps/{{ task.step_id }}';
+            }
+        });
+    });
+})()
+</script>
+{% endblock %}

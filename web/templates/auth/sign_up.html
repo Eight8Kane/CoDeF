@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en" style="height: 100%">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Sign up to CoDeF</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/bootstrap-5.3.2/bootstrap.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/common.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='/resources/bootstrap-icons-1.11.2/font/bootstrap-icons.min.css') }}">
+    <script src="{{ url_for('static', path='/js/jquery-3.7.1.min.js') }}"></script>
+    <script src="{{ url_for('static', path='/js/bootstrap-5.3.2/bootstrap.bundle.min.js') }}"></script>
+    <script src="{{ url_for('static', path='/js/utils.js') }}"></script>
+</head>
+<body class="d-flex py-4 bg-body-tertiary" style="height: 100%">
+<main class="w-100 m-auto" style="max-width: 480px">
+    <form method="post" class="needs-validation" name="loginForm">
+        <h1 class="h3 mb-3 fw-normal">Sign up to CoDeF</h1>
+
+        <div class="row mb-2">
+            <label for="email" class="col-4 col-form-label">Email Adress</label>
+            <div class="col-8">
+                <input type="email" class="form-control" id="email" name="email" required />
+            </div>
+        </div>
+        <div class="row mb-2">
+            <label for="name" class="col-4 col-form-label">User Name</label>
+            <div class="col-8">
+                <input type="name" class="form-control" id="name" name="name" required />
+            </div>
+        </div>
+        <div class="row mb-2">
+            <label for="password" class="col-4 col-form-label">Password</label>
+            <div class="col-8">
+                <input type="password" class="form-control" id="password" name="password" required />
+            </div>
+        </div>
+        <div class="row mb-2">
+            <label for="confirm" class="col-4 col-form-label">Confirm Password</label>
+            <div class="col-8">
+                <input type="password" class="form-control" id="confirm" name="confirm" />
+            </div>
+        </div>
+        <div class="text-danger mb-2" id="result" style="display: none;">
+            Login failed.
+        </div>
+
+        <button class="btn btn-primary w-100 py-2" type="submit">Sign up</button>
+    </form>
+</main>
+
+<div id="overlay">
+    <div id="loading-message">
+        <span class="loader"></span>
+        <p>please wait for a moment...</p>
+    </div>
+</div>
+
+<script>
+    function validate_password() {
+        $('#confirm')[0].setCustomValidity($('#password').val() == $('#confirm').val() ? "" : "Password don't match.");
+    }
+
+    $('#password').change(validate_password);
+    $('#confirm').change(validate_password)
+
+    var processingModal;
+    var processing = false;
+
+    form = document.loginForm
+    $('form').submit(function(event) {
+        event.preventDefault();
+
+        submit_form_data('/auth/register', {
+            method: 'POST',
+            form: $(this)[0],
+            callback: function() {
+                window.location.href = '/auth/signed_up';
+            },
+            on_error: function(status, detail) {
+                alert(detail);
+            }
+        });
+    })
+</script>
+</body>
+</html>

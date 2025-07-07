@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en" style="height: 100%">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>CoDeF</title>
+
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/bootstrap-5.3.2/bootstrap.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/common.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='/resources/bootstrap-icons-1.11.2/font/bootstrap-icons.min.css') }}">
+    <script src="{{ url_for('static', path='/js/bootstrap-5.3.2/bootstrap.bundle.min.js') }}"></script>
+    <script src="{{ url_for('static', path='/js/jquery-3.7.1.min.js') }}"></script>
+    <script src="{{ url_for('static', path='/js/moment.js') }}"></script>
+    <script src="{{ url_for('static', path='/js/utils.js?') }}"></script>
+    <style>
+        html {
+            font-size: 14px;
+        }
+
+        .y-scrollarea {
+            overflow-x: hidden;
+            overflow-y: auto;
+            height: calc(100vh - 150px);
+        }
+
+        .clickable {
+            cursor: pointer;
+        }
+    </style>
+    {% block style %}{% endblock %}
+</head>
+<body>
+{% block top %}{% endblock %}
+<div class="d-flex justify-content-center x-100" style="overflow-x: auto;">
+    <div id="top_container" class="container">
+    <!--
+    <header class="d-flex flex-wrap align-items-center justify-content-md-between py-3 border-bottom">
+        <div class="col-md-3 mb-2 mb-md-0">
+            <a href="/" class="d-flex align-items-center mb-2 mb-lg-0 link-body-emphasis text-decoration-none">
+                <span class="fs-4">CoDeF</span>
+            </a>
+        </div>
+        <div>
+            <a href="javascript:logout();" class="px-2 link-secondary text-decoration-none">Logout</a>
+        </div>
+    </header>
+    -->
+        <div class="d-flex">
+            <div style="width: 200px;">
+                <div class="rounded-3 text-white mb-4" style="background-color: #232ca9;">
+                    <div class="p-2 m-1">
+                        <a href="/" class="text-decoration-none fs-4 text-white">
+                            CoDeF
+                        </a>
+                        <hr class="mx-0 mt-2 mb-2"/>
+                        <div class="d-flex justify-content-between">
+                            <div><i class="bi bi-person fs-5"></i> {{ request.state.user.name }}</div>
+                            <i class="logout bi bi-box-arrow-right fs-5 clickable"></i>
+                        </div>
+                    </div>
+                </div>
+                <ul class="list-unstyled ps-2">
+                    <li class="mb-1">
+                        <a href="/designs" class="fw-bold text-decoration-none text-dark">
+                            Design
+                        </a>
+    {% if design %}
+                    <li class="ps-4">
+                        <a href="/designs/{{ design.design_id }}/summary" class="fw-bold link-body-emphasis text-decoration-none">
+                            {{ design.name }}
+                        </a>
+        {% if not closed %}
+                        <ul class="list-unstyled ps-4">
+                            <li class="mt-1">
+                                <a href="/designs/{{ design.design_id }}/comments" class="link-body-emphasis text-decoration-none">
+                                    Comments
+                                </a>
+                            </li>
+                            <li class="mt-1">
+                                <a href="/designs/{{ design.design_id }}/members" class="link-body-emphasis text-decoration-none">
+                                    Members
+                                </a>
+                            </li>
+                        </ul>
+        {% endif %}
+                    </li>
+    {% elif designs %}
+                    <li class="ps-4">My Designs</li>
+    {% endif %}
+                    </li>
+    {% if request.state.user.level == UserLevel.Admin %}
+                    <li class="border-top my-3"></li>
+                    <li class="mb-1">
+                        <span class="fw-bold">Admin</span>
+                        <ul class="list-unstyled px-4">
+                            <li class="mt-1">
+                                <a href="/admin/comments" class="link-body-emphasis d-inline-flex text-decoration-none">
+                                    Q&A
+                                </a>
+                            </li>
+                            <li class="mt-1">
+                                <a href="/admin/procedures/0" class="link-body-emphasis d-inline-flex text-decoration-none">
+                                    Design Procedure
+                                </a>
+                            </li>
+                            <li class="mt-1">
+                                <a href="/admin/users" class="link-body-emphasis d-inline-flex text-decoration-none">
+                                    Users
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+    {% endif %}
+                </ul>
+            </div>
+            <main class="w-100 d-flex flex-column flex-shirink-0">
+                <nav>
+                    <ol class="breadcrumb breadcrumb-chevron py-3 m-0 border-bottom px-5">
+    {% for item in breadcrumbs %}
+        {% if loop.last %}
+                        <li class="breadcrumb-item active">{{ item.name }}</li>
+        {% elif item.url %}
+                        <li class="breadcrumb-item">
+                            <a class="link-body-emphasis fw-semibold text-decoration-none" href="{{ item.url }}">
+                                {{ item.name }}
+                            </a>
+                        </li>
+        {% else %}
+                        <li class="breadcrumb-item">{{ item.name }}</li>
+        {% endif %}
+    {% endfor %}
+                    </ol>
+                </nav>
+                <div class="px-5 py-4 y-scrollarea">
+                    {% block content %}{% endblock %}
+                </div>
+            </main>
+        </div>
+        <footer>
+            <p class="text-center text-body-secondary border-top py-4">
+                Report a bug: <a href="mailto:khs_1021@snu.ac.kr">khs_1021@snu.ac.kr</a> |
+                <a href="mailto:jh.kane808@snu.ac.kr">jh.kane808@snu.ac.kr </a>
+            </p>
+        </footer>
+    </div>
+</div>
+<div id="overlay">
+    <div id="loading-message">
+        <span class="loader"></span>
+        <p>please wait for a moment...</p>
+    </div>
+</div>
+<script>
+    (() => {
+        $('.logout').click(function() {
+            fetch('/auth/jwt/logout', {
+                method: 'POST'
+            })
+                .then((response) => {
+                    location.href = '/';
+                })
+        });
+    })();
+</script>
+{% block script %}{% endblock %}
+</body>
+</html>

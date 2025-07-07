@@ -1,0 +1,87 @@
+{% extends "layout.html" %}
+
+{% block style %}
+<link rel="stylesheet" href="{{ url_for('static', path='/css/easymde.min.css') }}" />
+{% endblock %}
+
+{% block content %}
+<div class="document-view">
+    {% if not closed %}
+    <div class="w-100 text-end mb-4"><button class="edit btn btn-primary" type="button">Edit</button></div>
+    {% endif %}
+    <div class="markdown">{{ document }}</div>
+</div>
+
+<div class="document-form" style="display: none;">
+    <div class="w-100 text-end mb-4">
+        <a class="btn btn-outline-dark" href="/tasks/{{ task.task_id }}/markdown_template" target="_blank">
+            Template
+        </a>
+        <a class="btn btn-outline-dark" href="/tasks/{{ task.task_id }}/markdown_example" target="_blank">
+            Example
+        </a>
+    </div>
+    <textarea id="document" class="form-control">{{ document }}</textarea>
+
+    <div class="text-center">
+        <button class="save btn btn-primary" type="button">Save</button>
+        <a class="btn btn-secondary" href="">Cancel</a>
+    </div>
+</div>
+{% endblock %}
+
+{% block script %}
+<script src="{{ url_for('static', path='/js/marked.min.js') }}"></script>
+<script src="{{ url_for('static', path='/js/easymde.min.js') }}"></script>
+<script src="{{ url_for('static', path='/js/mathJax.js') }}"></script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+<script>
+    (() => {
+        $('.markdown').html(marked.parse($('.markdown').text().trim()));
+
+        var documentMDE = new EasyMDE({
+            element: document.getElementById('document'),
+            imageUploadFunction: function(file, onSuccess, onError) {
+                formData = new FormData();
+                formData.append('file', file);
+
+                fetch('/api/images/document', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    onSuccess(data.uri);
+                })
+                .catch(error => {
+                    onError(error.message);
+                });
+            },
+            uploadImage: true,
+            maxHeight: "calc(100vh - 400px)",
+            previewRender: function(plainText) {
+                setTimeout(() => {
+                    convertMathJax();
+                }, 100);
+                return marked.parse(plainText);
+            }
+        });
+
+        $('.edit').click(function() {
+            $('.document-view').hide();
+            $('.document-form').show();
+        });
+
+        $('.save').click(function() {
+            call_api('/api/designs/{{ design.design_id }}/tasks/{{ task.task_id }}/markdown', {
+                method: 'PUT',
+                data: {'document': documentMDE.value()},
+                callback: function() {
+                    window.location.reload();
+                }
+            });
+        });
+    })();
+</script>
+{% endblock %}

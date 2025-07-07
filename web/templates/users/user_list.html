@@ -1,0 +1,59 @@
+{% extends "layout.html" %}
+
+{% block style %}
+<link rel="stylesheet" href="{{ url_for('static', path='/css/datatables-2.2.2.min.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/datatables.css') }}">
+{% endblock %}
+
+{% block content %}
+<table id="user_table" class="table table-sm table-hover">
+    <thead>
+    <tr>
+        <th scope="col">Email</th>
+        <th scope="col">Name</th>
+        <th scope="col">Level</th>
+        <th scope="col" class="nosort">Status</th>
+        <th class="nosort"></th>
+    </tr>
+    </thead>
+    <tbody>
+    </tbody>
+</table>
+{% endblock %}
+
+{% block script %}
+<script src="{{ url_for('static', path='/js/datatables-2.2.2.min.js') }}"></script>
+
+<script>
+    const userTable = new DataTable('#user_table', {
+        ajax: {
+            url: '/api/users',
+        },
+        processing: true,
+        serverSide: true,
+        search: {return: true},
+        columns: [
+            {name: 'email', data: 'email'},
+            {name: 'name', data: 'name'},
+            {name: 'level', data: 'level'},
+            {
+                name: 'status',
+                render: function(data, type, row) {
+                    if (row.is_verified) {
+                        return row.is_active ? 'Active' : 'Not active';
+                    }
+                    else {
+                        return 'Not verified';
+                    }
+                }
+            },
+            {
+                render: function(data, type, row) {
+                    return `<a href="/admin/users/${row.id}" class="btn btn-outline-dark btn-sm">Edit</a>`;
+                }
+            }
+        ],
+        columnDefs: [{targets: 'nosort', orderable: false}]
+    });
+</script>
+{% endblock %}

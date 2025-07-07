@@ -1,0 +1,18 @@
+{% extends "layout.html" %}
+
+{% block style %}
+<link rel="stylesheet" href="{{ url_for('static', path='/css/jspreadsheet-4/jspreadsheet.min.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/jspreadsheet-4/jsuites.min.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="atv-error alert alert-danger">
+    <h4 class="alert-heading">{{ title }}</h4>
+    <hr>
+    <div class="mb-3 d-flex justify-content-between">
+        <p>{{ message }}</p>
+        <a href="/designs/{{ design.design_id }}/steps/{{ step_id }}">Back to the step page</a>
+    </div>
+</div>
+
+{% endblock %}

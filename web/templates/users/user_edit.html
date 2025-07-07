@@ -1,0 +1,57 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<form>
+    <div class="mb-3 row">
+        <div class="col-2 col-form-label">Email</div>
+        <div class="col-10 fw-bold">{{ user.email }}</div>
+    </div>
+    <div class="mb-3 row">
+        <div class="col-2 col-form-label">Name</div>
+        <div class="col-10"><input type="text" class="form-control" id="name" name="name" value="{{ user.name }}"></div>
+    </div>
+    <div class="mb-3 row">
+        <label for="level" class="col-2 col-form-label">Level</label>
+        <div class="col-10">
+            <select class="form-select" id="level" name="level">
+    {% for level in UserLevel %}
+                <option value="{{ level.name }}" {% if user.level == level %} selected {% endif %}>{{ level.name }}</option>
+    {% endfor %}
+            </select>
+        </div>
+    </div>
+    <div class="mb-3 row">
+        <div class="col-2 col-form-label">Status</div>
+        <div class="col-10">
+    {% if user.is_verified %}
+        {% if user.is_active %}
+                Active
+        {% else %}
+                Not active
+        {% endif %}
+    {% else %}
+                Not verified
+    {% endif %}
+        </div>
+    </div>
+    <div class="w-100 text-end mt-4">
+        <button type="submit" class="btn btn-primary">Save</button>
+        <a href="/admin/users" class="btn btn-secondary">Cancel</a>
+    </div>
+</form>
+{% endblock %}
+
+{% block script %}
+<script>
+    $('form').submit(function(event) {
+        event.preventDefault();
+
+        submit_form_data('/api/users/{{ user.id }}', {
+            form: $(this)[0],
+            method: 'PUT',
+            callback: function(design_id) {
+                window.location.href='/admin/users/';
+            }});
+    });
+</script>
+{% endblock %}

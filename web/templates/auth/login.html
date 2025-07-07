@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en" style="height: 100%">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>CoDeF</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/bootstrap-5.3.2/bootstrap.min.css') }}">
+    <script src="{{ url_for('static', path='/js/jquery-3.7.1.min.js') }}"></script>
+</head>
+<body class="d-flex py-4 bg-body-tertiary" style="height: 100%">
+<main class="w-100 m-auto" style="max-width: 320px">
+    <form method="post" class="needs-validation" name="loginForm">
+        <h1 class="h3 mb-3 fw-normal">Please sign in</h1>
+
+        <div class="form-floating mb-2">
+            <input type="text" class="form-control" id="username" name="username" required />
+            <label for="username">Email address</label>
+        </div>
+        <div class="form-floating mb-2">
+            <input type="password" class="form-control" id="password" name="password" required />
+            <label for="password">Password</label>
+        </div>
+        <div class="text-danger mb-2" id="result" style="display: none;">
+            Login failed.
+        </div>
+
+        <button class="btn btn-primary w-100 py-2" type="submit">Sign in</button>
+        <div class="text-end"><a href="/auth/sign_up">Sign up</a></div>
+    </form>
+</main>
+
+<script>
+(() => {
+    form = document.loginForm;
+
+    $('form').submit(function(event) {
+        event.preventDefault();
+
+        fetch('/auth/jwt/login', {
+            method: 'POST',
+            body: new FormData(form)
+        })
+            .then((response) => {
+                if (response.ok) {
+                    window.location.href = '/';
+                }
+                else {
+                    $('#result').show();
+                }
+            })
+    });
+})();
+</script>
+</body>
+</html>
