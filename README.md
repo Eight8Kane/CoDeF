@@ -1,6 +1,9 @@
 # CoDeF
 CoDeF: Comprehensive Design Framework for Advanced Mobility
 
+# Trial Page
+http://210.16.192.16:9004
+
 # Web Application Deployment Guide
 
 The CoDeF Web Application is written in Python and served using Uvicorn. It uses PostgreSQL as the database backend. This document explains how to deploy the service using Docker.
